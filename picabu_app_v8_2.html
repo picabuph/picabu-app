@@ -380,15 +380,15 @@ function save() {
 }
 
 function sincronizarBackup() {
-  try {
-    fetch(BACKUP_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ pedidos: pedidos, timestamp: new Date().toLocaleString('es-AR') })
-    });
-  } catch(e) {
-    // Silencioso — el backup falla sin interrumpir la app
-  }
+  console.log("Backup: enviando datos a Google Sheets...");
+  fetch(BACKUP_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
+    body: JSON.stringify({ pedidos: pedidos, timestamp: new Date().toLocaleString("es-AR") })
+  })
+  .then(r => r.text())
+  .then(r => console.log("Backup OK:", r))
+  .catch(e => console.error("Backup ERROR:", e));
 }
 
 function fmt(n) { return '$'+Number(n).toLocaleString('es-AR'); }
