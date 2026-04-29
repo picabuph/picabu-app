@@ -154,9 +154,9 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 /* PRÓXIMO ENVÍO */
 .envio-group { margin-bottom:20px; }
 .envio-prov { font-family:'Yeseva One',serif; font-size:16px; color:var(--marron-d); margin-bottom:10px; padding-bottom:6px; border-bottom:2px solid var(--arena); }
-.envio-row { display:flex; align-items:center; gap:12px; padding:9px 14px; background:var(--white); border:1px solid var(--border); border-radius:9px; margin-bottom:7px; }
-.envio-prod { flex:1; font-size:13px; }
-.envio-cliente { font-size:12px; color:var(--muted); font-style:italic; }
+.envio-row { display:flex; flex-direction:column; gap:3px; padding:10px 14px; background:var(--white); border:1px solid var(--border); border-radius:9px; margin-bottom:7px; }
+.envio-prod { font-size:13px; color:var(--muted); }
+.envio-cliente { font-size:14px; font-weight:600; color:var(--marron-d); }
 
 /* EXCEL */
 .excel-wrap { overflow-x:auto; }
@@ -271,7 +271,13 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
     </div>
     <div class="fl">
       <label>Proveedor</label>
-      <input type="text" id="pm-proveedor" placeholder="Ej: Click, Photobox...">
+      <select id="pm-proveedor" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:9px;font-family:Montserrat,sans-serif;font-size:13px;background:var(--white);color:var(--text);cursor:pointer;">
+      <option value="">— Sin asignar —</option>
+      <option value="COPY">COPY</option>
+      <option value="CLICK">CLICK</option>
+      <option value="B612">B612</option>
+      <option value="Otros">Otros</option>
+    </select>
     </div>
     <div class="fl">
       <label>Notas</label>
@@ -791,7 +797,7 @@ function renderEnvio() {
   if(!Object.keys(grupos).length){el.innerHTML='<div class="empty">No hay productos en producción.</div>';return;}
   el.innerHTML=Object.entries(grupos).map(([prov,items])=>
     `<div class="envio-group"><div class="envio-prov">${prov}</div>
-    ${items.map(it=>`<div class="envio-row"><div class="envio-prod">${it.prod}</div><div class="envio-cliente">${it.cliente} (${it.mama})</div></div>`).join('')}
+    ${items.map(it=>`<div class="envio-row"><div class="envio-cliente">${it.cliente} · ${it.mama}</div><div class="envio-prod">${it.prod}</div></div>`).join('')}
     </div>`).join('');
 }
 
