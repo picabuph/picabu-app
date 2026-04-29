@@ -122,6 +122,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .mbox-btns { display:flex; gap:10px; justify-content:flex-end; margin-top:18px; }
 .btn-sec { padding:9px 20px; background:none; border:1px solid var(--border); border-radius:9px; cursor:pointer; font-size:12px; color:var(--muted); font-family:'Montserrat',sans-serif; }
 .btn-pri { padding:9px 22px; background:var(--marron-d); color:var(--rosa-l); border:none; border-radius:9px; cursor:pointer; font-size:10px; letter-spacing:1.5px; text-transform:uppercase; font-family:'Montserrat',sans-serif; font-weight:500; }
+.btn-eliminar { padding:9px 16px; background:none; border:1px solid #c97b7b; border-radius:9px; cursor:pointer; font-size:12px; color:#c97b7b; font-family:'Montserrat',sans-serif; }
 
 /* FORM NUEVO PEDIDO */
 .fg { margin-bottom:14px; }
@@ -297,6 +298,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
     <div class="fg" style="margin-bottom:0;"><label>Notas generales</label><textarea id="f-notas" rows="2" placeholder="Datos de sesión, pendientes..."></textarea></div>
     <div class="mbox-btns">
       <button class="btn-sec" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn-eliminar" id="btn-eliminar-pedido" style="display:none" onclick="eliminarPedido()">🗑 Eliminar</button>
       <button class="btn-pri" onclick="guardarPedido()">Guardar pedido</button>
     </div>
   </div>
@@ -735,6 +737,7 @@ function abrirEditar(ci) {
   });
   recalc();
   document.getElementById('modal').classList.add('open');
+  document.getElementById('btn-eliminar-pedido').style.display = 'inline-block';
 }
 
 function cambiarPago(ci, val) {
@@ -840,8 +843,16 @@ function abrirModal() {
   document.getElementById('total-rt').textContent='$0';
   addProdRow();
   document.getElementById('modal').classList.add('open');
+  document.getElementById('btn-eliminar-pedido').style.display='none';
 }
-function cerrarModal(){document.getElementById('modal').classList.remove('open'); editCI=null;}
+function cerrarModal(){document.getElementById('modal').classList.remove('open'); document.getElementById('btn-eliminar-pedido').style.display='none'; editCI=null;}
+function eliminarPedido(){
+  if(!confirm('¿Eliminar este pedido? Esta acción no se puede deshacer.')) return;
+  pedidos.splice(editCI,1);
+  save();
+  cerrarModal();
+  renderPedidos();
+}
 
 const DB=[
   {c:'10-pola-iman',n:'10 imanes polaroid',p:76000},{c:'20-pola-iman',n:'20 imanes polaroid',p:90000},
