@@ -962,17 +962,16 @@ function renderExcel() {
 
   const cargHtml = yaEnExcel.length
     ? `<div style="margin-top:24px;">
-        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:10px;">Cargados en excel</div>
-        <div class="excel-wrap"><table class="excel-tbl" id="etbl-c" style="opacity:0.6;">
-          <tr><th></th><th>Mes</th><th>Fecha</th><th>Cliente</th><th>Código</th></tr>
-          ${yaEnExcel.map(r=>`<tr>
-            <td><input type="checkbox" class="excel-chk-c" data-key="${r.key}" style="accent-color:var(--marron);width:15px;height:15px;cursor:pointer;"></td>
-            <td>${r.mes}</td><td>${r.fecha}</td><td>${r.cliente}</td><td>${r.codigo}</td>
-          </tr>`).join('')}
-        </table></div>
-        <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
-          <button class="btn-copy-e" onclick="selAllCargados()">Seleccionar todos</button>
-          <button class="btn-copy-e" onclick="eliminarCargados()" style="background:#c97b7b;color:#fff;border-color:#c97b7b;">Eliminar seleccionados</button>
+        <button onclick="toggleCargados()" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:8px;font-family:'Montserrat',sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600;padding:0;margin-bottom:0;">
+          <span id="carg-ico">▶</span> Cargados en excel (${yaEnExcel.length})
+        </button>
+        <div id="carg-tabla" style="display:none;margin-top:10px;">
+          <div class="excel-wrap"><table class="excel-tbl" id="etbl-c" style="opacity:0.6;">
+            <tr><th>Mes</th><th>Fecha</th><th>Cliente</th><th>Código</th></tr>
+            ${yaEnExcel.map(r=>`<tr>
+              <td>${r.mes}</td><td>${r.fecha}</td><td>${r.cliente}</td><td>${r.codigo}</td>
+            </tr>`).join('')}
+          </table></div>
         </div>
       </div>`
     : '';
@@ -1001,18 +1000,13 @@ function selAllPendientes(){
   document.querySelectorAll('.excel-chk').forEach(c=>c.checked=true);
 }
 
-function selAllCargados(){
-  document.querySelectorAll('.excel-chk-c').forEach(c=>c.checked=true);
-}
-
-function eliminarCargados(){
-  const sel=Array.from(document.querySelectorAll('.excel-chk-c:checked')).map(c=>c.dataset.key);
-  if(!sel.length){alert('Tildá al menos una fila primero.');return;}
-  if(!confirm(`¿Eliminar ${sel.length} fila${sel.length!==1?'s':''} del historial?`)) return;
-  const obj=getExcelCargados();
-  sel.forEach(k=>{ delete obj[k]; });
-  saveExcelCargados(obj);
-  renderExcel();
+function toggleCargados(){
+  const t=document.getElementById('carg-tabla');
+  const i=document.getElementById('carg-ico');
+  if(!t)return;
+  const abierto=t.style.display!=='none';
+  t.style.display=abierto?'none':'block';
+  i.textContent=abierto?'▶':'▼';
 }
 
 // ── CONFIG ESTADOS ──
