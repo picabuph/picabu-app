@@ -17,7 +17,17 @@
   const fbApp = initializeApp(firebaseConfig);
   const db = getFirestore(fbApp);
   const REF = doc(db, "picabu", "pedidos");
-  onSnapshot(REF, (snap) => { if (snap.exists()) { const d = snap.data(); if (d && d.lista) { window.pedidos = d.lista; localStorage.setItem("picabu_v8", JSON.stringify(d.lista)); const tab = document.querySelector(".tab.active")?.textContent.trim(); if (typeof renderDiseno === "function" && tab === "Diseño") renderDiseno(); else if (typeof renderPedidos === "function") renderPedidos(); } } });
+  onSnapshot(REF, (snap) => { if (snap.exists()) { const d = snap.data(); if (d && d.lista) { 
+    let lista = d.lista;
+    // Asignar uid a productos que no tienen uno
+    let necesitaGuardar = false;
+    lista.forEach(p => { if (p.prods) p.prods.forEach(x => { if (!x.uid) { x.uid = 'u'+Date.now()+Math.random().toString(36).substr(2,6); necesitaGuardar = true; } }); });
+    window.pedidos = lista;
+    localStorage.setItem("picabu_v8", JSON.stringify(lista));
+    if (necesitaGuardar && typeof window.saveToFirebase === 'function') window.saveToFirebase(lista);
+    const tab = document.querySelector(".tab.active")?.textContent.trim(); 
+    if (typeof renderDiseno === "function" && tab === "Diseño") renderDiseno(); else if (typeof renderPedidos === "function") renderPedidos(); 
+  } } });
   window.saveToFirebase = async function(data) { try { await setDoc(REF, { lista: data, updated: new Date().toISOString() }); } catch(e) { console.warn("Firebase:", e); } };
 </script>
 <style>
@@ -138,7 +148,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .total-label { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); font-weight:500; }
 .total-val { font-family:'Yeseva One',serif; font-size:20px; color:var(--marron-d); }
 .pf-row { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:8px; }
-.pf-top { display:grid; grid-template-columns:1fr 100px 32px; gap:8px; align-items:center; }
+.pf-top { display:grid; grid-template-columns:1fr 70px 70px 32px; gap:8px; align-items:center; }
 .pf-wrap { position:relative; }
 .pf-inp { width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; background:var(--white); color:var(--text); font-family:'Montserrat',sans-serif; outline:none; }
 .pf-inp:focus { border-color:var(--rosa); }
@@ -155,6 +165,11 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .btn-rm { width:32px; height:32px; background:none; border:1px solid var(--border); border-radius:8px; color:#b94040; cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 .btn-add-p { width:100%; padding:10px; background:none; border:1px dashed var(--crema); border-radius:10px; color:var(--muted); cursor:pointer; font-size:12px; margin-bottom:14px; font-family:'Montserrat',sans-serif; letter-spacing:1px; }
 .btn-add-p:hover { border-color:var(--rosa); color:var(--text); }
+
+/* BANDEJAS DOBLES */
+.alertas-wrap { display:flex; gap:10px; margin-bottom:14px; align-items:flex-start; }
+.alert-box { flex:1; min-width:0; }
+@media(max-width:520px) { .alertas-wrap { flex-direction:column; } }
 
 /* PRÓXIMO ENVÍO */
 .envio-group { margin-bottom:20px; }
@@ -190,7 +205,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .btn-save-e { padding:10px 24px; background:var(--marron-d); color:var(--rosa-l); border:none; border-radius:9px; cursor:pointer; font-size:10px; letter-spacing:2px; text-transform:uppercase; font-family:'Montserrat',sans-serif; font-weight:500; }
 
 @media(max-width:520px) {
-  .pf-top { grid-template-columns:1fr 80px 32px; }
+  .pf-top { grid-template-columns:1fr 60px 55px 32px; }
   .estado-btn, .estado-empty-btn { min-width:80px; font-size:9px; }
 }
 </style>
@@ -223,7 +238,10 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
     <div id="lista-pedidos"></div>
   </div>
   <div class="page" id="tab-diseno">
-    <div id="alertas-d"></div>
+    <div class="alertas-wrap">
+      <div id="alertas-seguimiento"></div>
+      <div id="alertas-entrega"></div>
+    </div>
     <div id="lista-diseno"></div>
   </div>
   <div class="page" id="tab-envio"><div id="lista-envio"></div></div>
@@ -365,10 +383,16 @@ function load() {
         estado: x.estado || '',
         nota: x.nota || '',
         proveedor: x.proveedor || '',
-        ultimoCambio: x.ultimoCambio || p.fecha || ''
+        ultimoCambio: x.ultimoCambio || p.fecha || '',
+        cantIdx: x.cantIdx,
+        cantTotal: x.cantTotal,
+        uid: x.uid || ('u'+Date.now()+Math.random().toString(36).substr(2,6))
       }));
     });
   } catch(e) { pedidos = []; }
+  // Persistir UIDs asignados en la migración
+  localStorage.setItem('picabu_v8', JSON.stringify(pedidos));
+  localStorage.setItem('picabu_v7', JSON.stringify(pedidos));
   const url = localStorage.getItem('picabu_sheets_url') || SHEETS_URL_DEFAULT;
   const dias = localStorage.getItem('picabu_dias') || '2';
   const su = document.getElementById('sheets-url'); if(su) su.value = url;
@@ -546,6 +570,10 @@ function prodRowHtml(ci, x, pi, showPrecio, allowNameEdit, prefijo) {
 
   const precioHtml = showPrecio ? `<div class="prod-precio">${fmt(x.precio)}</div>` : '';
 
+  const cantBadge = (x.cantTotal && x.cantTotal > 1 && x.cantIdx === 0)
+    ? `<span style="background:#7f6d67;color:#fff;border-radius:10px;padding:2px 7px;font-size:10px;font-weight:600;flex-shrink:0;">×${x.cantTotal}</span>`
+    : '';
+
   return `<div class="prod-row"
       draggable="true"
       ondragstart="onDragStartProd(event,${ci},${pi})"
@@ -554,6 +582,7 @@ function prodRowHtml(ci, x, pi, showPrecio, allowNameEdit, prefijo) {
       ondragleave="this.classList.remove('drag-over-prod')">
     <span class="prod-drag" draggable="false">⠿</span>
     ${nombreHtml}
+    ${cantBadge}
     ${precioHtml}
     <div class="nota-ico">${x.nota?'📝':''}</div>
     <div class="estado-wrap">
@@ -572,7 +601,13 @@ function clienteCardHtml(p, i, showPrecio, allowNameEdit) {
   const total = p.prods.reduce((s,x)=>s+Number(x.precio||0),0);
   const pagoClass = p.pago==='Pagado'?'pago-pagado':p.pago==='Saldo pendiente'?'pago-saldo':'pago-vacio';
   const prefijo = allowNameEdit ? 'depop' : 'epop';
-  const prodsHtml = p.prods.map((x,j)=>prodRowHtml(i,x,j,showPrecio,allowNameEdit,prefijo)).join('');
+  const vistos = new Set();
+  const prodsVisibles = p.prods.filter(x => {
+    if (x.cantIdx !== undefined) return x.cantIdx === 0;
+    if (vistos.has(x.nombre)) return false;
+    vistos.add(x.nombre); return true;
+  });
+  const prodsHtml = prodsVisibles.map(x => prodRowHtml(i, x, p.prods.indexOf(x), showPrecio, allowNameEdit, prefijo)).join('');
 
   const footerHtml = showPrecio
     ? `<div class="c-footer">
@@ -635,30 +670,40 @@ function renderPedidos() {
 
 // ── RENDER DISEÑO ──
 function renderDiseno() {
-  // Alertas agrupadas por cliente
+  // Bandeja 1: Sin respuesta del cliente
   const dias = getDias();
-  const grupos = {};
+  const gruposSeg = {};
   pedidos.forEach((p,ci) => {
     p.prods.forEach((x,pi) => {
       if (ESTADOS_ALERTA.includes(x.estado)) {
         const d = daysSince(x.ultimoCambio || p.fecha);
         if (d >= dias) {
           const key = `${p.bebe} · ${p.mama}`;
-          if (!grupos[key]) grupos[key] = [];
-          grupos[key].push({prod:x.nombre, estado:x.estado, dias:d});
+          if (!gruposSeg[key]) gruposSeg[key] = [];
+          gruposSeg[key].push({prod:x.nombre, estado:x.estado, dias:d});
         }
       }
     });
   });
 
-  const alertasEl = document.getElementById('alertas-d');
-  const keys = Object.keys(grupos);
-  if (keys.length) {
-    alertasEl.innerHTML = `<div class="alert-box">
+  // Bandeja 2: Coordinar entrega (todos los productos Listo en estudio)
+  const gruposEnt = {};
+  pedidos.forEach((p) => {
+    const activos = p.prods.filter(x => x.estado !== 'Entregado');
+    if (activos.length > 0 && activos.every(x => x.estado === 'Listo en estudio')) {
+      const key = `${p.bebe} · ${p.mama}`;
+      gruposEnt[key] = true;
+    }
+  });
+
+  const segEl = document.getElementById('alertas-seguimiento');
+  const keysSeg = Object.keys(gruposSeg);
+  if (keysSeg.length) {
+    segEl.innerHTML = `<div class="alert-box">
       <div class="alert-title">Sin respuesta del cliente</div>
-      ${keys.map(k=>`<div class="alert-grupo">
+      ${keysSeg.map(k=>`<div class="alert-grupo">
         <div class="alert-cliente">${k}</div>
-        ${grupos[k].map(a=>`<div class="alert-item">
+        ${gruposSeg[k].map(a=>`<div class="alert-item">
           <span class="alert-prod">${a.prod}</span>
           <span class="alert-badge">${a.estado}</span>
           <span class="alert-dias">${a.dias} día${a.dias!==1?'s':''}</span>
@@ -666,7 +711,20 @@ function renderDiseno() {
       </div>`).join('')}
     </div>`;
   } else {
-    alertasEl.innerHTML = '';
+    segEl.innerHTML = '';
+  }
+
+  const entEl = document.getElementById('alertas-entrega');
+  const keysEnt = Object.keys(gruposEnt);
+  if (keysEnt.length) {
+    entEl.innerHTML = `<div class="alert-box">
+      <div class="alert-title">Coordinar entrega</div>
+      ${keysEnt.map(k=>`<div class="alert-grupo">
+        <div class="alert-cliente">${k}</div>
+      </div>`).join('')}
+    </div>`;
+  } else {
+    entEl.innerHTML = '';
   }
 
   const el = document.getElementById('lista-diseno');
@@ -694,7 +752,16 @@ function renderDiseno() {
 function genWA(i) {
   const p = pedidos[i];
   const total = p.prods.reduce((s,x)=>s+Number(x.precio||0),0);
-  const lista = p.prods.map(x=>`· ${x.nombre} — ${fmt(x.precio)}`).join('\n');
+  // Agrupar por nombre para mostrar cantidad
+  const grupos = [];
+  p.prods.forEach(x => {
+    const exist = grupos.find(g => g.nombre === x.nombre && g.precio === x.precio);
+    if (exist) { exist.cant++; } else { grupos.push({nombre:x.nombre, precio:Number(x.precio||0), cant:1}); }
+  });
+  const lista = grupos.map(g => {
+    if (g.cant > 1) return `· ${g.cant} x ${g.nombre} — ${fmt(g.precio)} x${g.cant} = *${fmt(g.precio*g.cant)}*`;
+    return `· ${g.nombre} — ${fmt(g.precio)}`;
+  }).join('\n');
   const msg = `Genial 🤍 Te paso el detalle de tu pedido:\n\n${lista}\n\n*Total: ${fmt(total)}*`;
   const box = document.getElementById(`wa-${i}`);
   if (!box) return;
@@ -761,7 +828,14 @@ function abrirEditar(ci) {
   document.getElementById('f-notas').value = p.notas || '';
   const container = document.getElementById('prods-form');
   container.innerHTML = '';
+  // Agrupar productos por nombre+codigo+precio para mostrar cantidad
+  const agrupados = [];
   p.prods.forEach(x => {
+    const key = `${x.nombre}__${x.codigo}__${x.precio}`;
+    const exist = agrupados.find(a => a.key === key);
+    if (exist) { exist.cant++; } else { agrupados.push({key, x, cant:1}); }
+  });
+  agrupados.forEach(({x, cant}) => {
     const id = 'pr_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
     const div = document.createElement('div');
     div.className='pf-row'; div.dataset.rowid=id;
@@ -775,6 +849,7 @@ function abrirEditar(ci) {
         <div class="pf-drop" id="pfd-${id}">${DB.map(p=>`<div class="pf-opt" data-c="${p.c}" data-p="${p.p}" onmousedown="selProd(this,'${id}')">${p.n}<span class="pf-opt-price">${fmt(p.p)}</span></div>`).join('')}</div>
       </div>
       <div class="prec-w"><span>$</span><input type="number" class="pf-price" value="${x.precio||0}" min="0" oninput="recalc()"></div>
+      <input type="number" class="pf-inp pf-cant" placeholder="cant" min="1" value="${cant>1?cant:''}" style="text-align:center;padding:8px 6px;" oninput="recalc()">
       <button class="btn-rm" onclick="this.closest('.pf-row').remove();recalc()">×</button>
     </div>`;
     container.appendChild(div);
@@ -840,8 +915,20 @@ function renderEnvio() {
 }
 
 // ── EXCEL ──
-function getExcelCargados() { try { return JSON.parse(localStorage.getItem('picabu_excel_cargados')||'[]'); } catch(e) { return []; } }
-function saveExcelCargados(arr) { localStorage.setItem('picabu_excel_cargados', JSON.stringify(arr)); }
+function getExcelCargados() { 
+  try { 
+    const v = JSON.parse(localStorage.getItem('picabu_excel_cargados')||'{}');
+    // migrar formato viejo (array) a objeto
+    if (Array.isArray(v)) { const o={}; v.forEach(k=>o[k]=1); localStorage.setItem('picabu_excel_cargados',JSON.stringify(o)); return o; }
+    return v;
+  } catch(e) { return {}; } 
+}
+function saveExcelCargados(obj) { localStorage.setItem('picabu_excel_cargados', JSON.stringify(obj)); }
+
+function excelKey(p, x) {
+  // Key que no depende de uid ni de índices — solo datos que nunca cambian
+  return `${p.mama}|||${p.bebe}|||${p.fecha}|||${x.codigo||x.nombre}|||${x.cantIdx||0}`;
+}
 
 function renderExcel() {
   const el=document.getElementById('lista-excel');
@@ -853,9 +940,9 @@ function renderExcel() {
   const pendientes=[];
   const yaEnExcel=[];
   pedidos.forEach((p,ci)=>p.prods.forEach((x,pi)=>{
-    const key=`${ci}-${pi}-${x.nombre}`;
+    const key = excelKey(p, x);
     const row={mes,fecha,cliente:`${p.mama} / ${p.bebe}`,codigo:x.codigo||'—',key};
-    if(cargados.includes(key)) yaEnExcel.push(row); else pendientes.push(row);
+    if(cargados[key]) yaEnExcel.push(row); else pendientes.push(row);
   }));
 
   const pendHtml = pendientes.length
@@ -867,6 +954,7 @@ function renderExcel() {
         </tr>`).join('')}
       </table></div>
       <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
+        <button class="btn-copy-e" onclick="selAllPendientes()">Seleccionar todos</button>
         <button class="btn-copy-e" onclick="copiarExcel()">Copiar tabla</button>
         <button class="btn-copy-e" onclick="marcarCargados()" style="background:var(--marron-d);color:var(--rosa-l);border-color:var(--marron-d);">✓ Marcar seleccionados como cargados</button>
       </div>`
@@ -903,10 +991,14 @@ function copiarExcel(){
 function marcarCargados(){
   const sel=Array.from(document.querySelectorAll('.excel-chk:checked')).map(c=>c.dataset.key);
   if(!sel.length){alert('Tildá al menos una fila primero.');return;}
-  const arr=getExcelCargados();
-  sel.forEach(k=>{if(!arr.includes(k))arr.push(k);});
-  saveExcelCargados(arr);
+  const obj=getExcelCargados();
+  sel.forEach(k=>{ obj[k]=1; });
+  saveExcelCargados(obj);
   renderExcel();
+}
+
+function selAllPendientes(){
+  document.querySelectorAll('.excel-chk').forEach(c=>c.checked=true);
 }
 
 function selAllCargados(){
@@ -917,8 +1009,9 @@ function eliminarCargados(){
   const sel=Array.from(document.querySelectorAll('.excel-chk-c:checked')).map(c=>c.dataset.key);
   if(!sel.length){alert('Tildá al menos una fila primero.');return;}
   if(!confirm(`¿Eliminar ${sel.length} fila${sel.length!==1?'s':''} del historial?`)) return;
-  const arr=getExcelCargados().filter(k=>!sel.includes(k));
-  saveExcelCargados(arr);
+  const obj=getExcelCargados();
+  sel.forEach(k=>{ delete obj[k]; });
+  saveExcelCargados(obj);
   renderExcel();
 }
 
@@ -1011,6 +1104,7 @@ function addProdRow() {
       <div class="pf-drop" id="pfd-${id}">${DB.map(p=>`<div class="pf-opt" data-c="${p.c}" data-p="${p.p}" onmousedown="selProd(this,'${id}')">${p.n}<span class="pf-opt-price">${fmt(p.p)}</span></div>`).join('')}</div>
     </div>
     <div class="prec-w"><span>$</span><input type="number" class="pf-price" placeholder="0" min="0" oninput="recalc()"></div>
+    <input type="number" class="pf-inp pf-cant" placeholder="cant" min="1" value="" style="text-align:center;padding:8px 6px;" oninput="recalc()">
     <button class="btn-rm" onclick="this.closest('.pf-row').remove();recalc()">×</button>
   </div>`;
   container.appendChild(div);
@@ -1033,7 +1127,11 @@ function selProd(opt,id){
   recalc();
 }
 function recalc(){
-  const total=Array.from(document.querySelectorAll('.pf-price')).reduce((s,i)=>s+Number(i.value||0),0);
+  const total=Array.from(document.querySelectorAll('.pf-row')).reduce((s,row)=>{
+    const precio=Number(row.querySelector('.pf-price')?.value||0);
+    const cant=Math.max(1,Number(row.querySelector('.pf-cant')?.value||1));
+    return s+precio*cant;
+  },0);
   document.getElementById('total-rt').textContent=fmt(total);
 }
 
@@ -1049,7 +1147,12 @@ function guardarPedido(){
     const nombre=ni?ni.value.trim():'';
     const codigo=ni?(ni.dataset.codigo||'PERSONALIZADO'):'PERSONALIZADO';
     const precio=Number(row.querySelector('.pf-price')?.value)||0;
-    if(nombre) prods.push({nombre,codigo,precio,estado:'',nota:'',proveedor:'',ultimoCambio:hoy});
+    const cant=Math.max(1,Number(row.querySelector('.pf-cant')?.value||1));
+    if(nombre){
+      for(let q=0;q<cant;q++){
+        prods.push({nombre,codigo,precio,estado:'',nota:'',proveedor:'',ultimoCambio:hoy,cantIdx:q,cantTotal:cant,uid:'u'+Date.now()+Math.random().toString(36).substr(2,6)});
+      }
+    }
   });
   if(!prods.length){alert('Agregá al menos un producto.');return;}
   if(editCI!==null){
