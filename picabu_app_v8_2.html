@@ -28,7 +28,7 @@
     const tab = document.querySelector(".tab.active")?.textContent.trim(); 
     if (typeof renderDiseno === "function" && tab === "Diseño") renderDiseno(); else if (typeof renderPedidos === "function") renderPedidos(); 
   } } });
-  window.saveToFirebase = async function(data) { try { await setDoc(REF, { lista: data, updated: new Date().toISOString() }); } catch(e) { console.warn("Firebase:", e); } };
+  window.saveToFirebase = async function(data) { try { await setDoc(REF, { lista: data, updated: new Date().toISOString() }); } catch(e) { console.warn("Firebase:", e); throw e; } };
 </script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -744,8 +744,29 @@ const BACKUP_URL = 'https://script.google.com/macros/s/AKfycbxwLdY-rRMFRCQ4duppA
 function save() {
   localStorage.setItem('picabu_v8', JSON.stringify(pedidos));
   localStorage.setItem('picabu_v7', JSON.stringify(pedidos));
-  if (typeof window.saveToFirebase === 'function') window.saveToFirebase(pedidos);
+  if (typeof window.saveToFirebase === 'function') {
+    mostrarGuardando();
+    window.saveToFirebase(pedidos)
+      .then(() => mostrarGuardado(true))
+      .catch(() => mostrarGuardado(false));
+  }
   sincronizarBackup();
+}
+
+function mostrarGuardando() {
+  let el = document.getElementById('fb-status');
+  if (!el) { el = document.createElement('div'); el.id = 'fb-status'; document.body.appendChild(el); }
+  el.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#7f6d67;color:#fff;padding:10px 18px;border-radius:10px;font-family:Montserrat,sans-serif;font-size:13px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:opacity 0.3s;';
+  el.textContent = '⏳ Guardando...';
+  el.style.opacity = '1';
+}
+
+function mostrarGuardado(ok) {
+  const el = document.getElementById('fb-status');
+  if (!el) return;
+  el.style.background = ok ? '#4a7c5f' : '#c97b7b';
+  el.textContent = ok ? '✓ Guardado en la nube' : '⚠️ Error al guardar en la nube — revisá tu conexión';
+  if (ok) setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 2500);
 }
 
 function sincronizarBackup() {
