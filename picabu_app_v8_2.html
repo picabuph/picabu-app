@@ -224,6 +224,8 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
   </div>
 </header>
 
+<div id="sync-bandeja" style="display:none;align-items:center;gap:10px;background:#fdf0f0;border:1px solid #e8c5c5;border-radius:8px;margin:10px 16px 0;padding:8px 14px;font-size:12px;color:#a05050;"></div>
+
 <div class="tabs">
   <div class="tab active" onclick="showTab(&#39;pedidos&#39;)">Pedidos</div>
   <div class="tab" onclick="showTab(&#39;diseno&#39;)">Diseño</div>
@@ -741,32 +743,84 @@ function load() {
 
 const BACKUP_URL = 'https://script.google.com/macros/s/AKfycbxwLdY-rRMFRCQ4duppATCBsllmmVXd1dhEfr7o8DFpqeNH0-G3Z2bZ2JssIyGf6D6Ozg/exec';
 
-function save() {
+function save(idx) {
   localStorage.setItem('picabu_v8', JSON.stringify(pedidos));
   localStorage.setItem('picabu_v7', JSON.stringify(pedidos));
   if (typeof window.saveToFirebase === 'function') {
-    mostrarGuardando();
+    if (idx !== undefined) setSyncStatus(idx, 'saving');
     window.saveToFirebase(pedidos)
-      .then(() => mostrarGuardado(true))
-      .catch(() => mostrarGuardado(false));
+      .then(() => { if (idx !== undefined) setSyncStatus(idx, 'ok'); })
+      .catch(() => { if (idx !== undefined) setSyncStatus(idx, 'error'); });
   }
   sincronizarBackup();
 }
 
-function mostrarGuardando() {
-  let el = document.getElementById('fb-status');
-  if (!el) { el = document.createElement('div'); el.id = 'fb-status'; document.body.appendChild(el); }
-  el.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#7f6d67;color:#fff;padding:10px 18px;border-radius:10px;font-family:Montserrat,sans-serif;font-size:13px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:opacity 0.3s;';
-  el.textContent = '⏳ Guardando...';
-  el.style.opacity = '1';
+const fbSyncStatus = {};
+
+function fmtTs(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const hh = String(d.getHours()).padStart(2,'0');
+  const mm = String(d.getMinutes()).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mo = String(d.getMonth()+1).padStart(2,'0');
+  return `${dd}/${mo} ${hh}:${mm}`;
 }
 
-function mostrarGuardado(ok) {
-  const el = document.getElementById('fb-status');
-  if (!el) return;
-  el.style.background = ok ? '#4a7c5f' : '#c97b7b';
-  el.textContent = ok ? '✓ Guardado en la nube' : '⚠️ Error al guardar en la nube — revisá tu conexión';
-  if (ok) setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 2500);
+function setSyncStatus(i, status) {
+  fbSyncStatus[i] = { status, ts: status === 'saving' ? (fbSyncStatus[i]?.ts || null) : new Date().toISOString() };
+  const el = document.getElementById(`sync-${i}`);
+  if (el) updateSyncEl(el, i);
+  actualizarBandeja();
+}
+
+function updateSyncEl(el, i) {
+  const info = fbSyncStatus[i] || {};
+  const { status, ts } = info;
+  const tsStr = fmtTs(ts);
+  if (status === 'saving') {
+    el.innerHTML = `<span style="color:#aaa;font-size:11px;">⏳ guardando…</span>`;
+  } else if (status === 'ok') {
+    el.innerHTML = `<span style="color:#7aaa8a;font-size:10px;" title="Guardado en la nube${ts?' — '+tsStr:''}">✓ ${tsStr}</span>`;
+  } else if (status === 'error') {
+    el.innerHTML = `<span style="color:#c97b7b;font-size:10px;" title="Error al guardar${ts?' — '+tsStr:''}">✗ ${tsStr}</span> <button onclick="reintentarSync(${i})" title="Reintentar guardado" style="background:none;border:1px solid #c97b7b;color:#c97b7b;border-radius:4px;font-size:10px;padding:1px 5px;cursor:pointer;margin-left:3px;">↺</button>`;
+  } else {
+    el.innerHTML = '';
+  }
+}
+
+function reintentarSync(i) {
+  if (typeof window.saveToFirebase !== 'function') return;
+  setSyncStatus(i, 'saving');
+  window.saveToFirebase(pedidos)
+    .then(() => setSyncStatus(i, 'ok'))
+    .catch(() => setSyncStatus(i, 'error'));
+}
+
+function actualizarBandeja() {
+  const errores = Object.entries(fbSyncStatus).filter(([,v]) => v.status === 'error');
+  let bandeja = document.getElementById('sync-bandeja');
+  if (!bandeja) return;
+  if (errores.length === 0) {
+    bandeja.style.display = 'none';
+    bandeja.innerHTML = '';
+    return;
+  }
+  const nombres = errores.map(([i]) => {
+    const p = pedidos[i];
+    return p ? `<strong>${p.bebe}</strong>` : `#${i}`;
+  }).join(', ');
+  bandeja.style.display = 'flex';
+  bandeja.innerHTML = `<span style="flex:1;">⚠️ No se pudo guardar en la nube: ${nombres}. Revisá tu conexión y reintentá antes de cerrar.</span><button onclick="reintentarTodos()" style="background:none;border:1px solid #c97b7b;color:#c97b7b;border-radius:5px;font-size:11px;padding:2px 10px;cursor:pointer;white-space:nowrap;">↺ Reintentar todos</button>`;
+}
+
+function reintentarTodos() {
+  const errores = Object.entries(fbSyncStatus).filter(([,v]) => v.status === 'error');
+  if (errores.length === 0) return;
+  setSyncStatus(errores[0][0], 'saving');
+  window.saveToFirebase(pedidos)
+    .then(() => { errores.forEach(([i]) => setSyncStatus(i, 'ok')); })
+    .catch(() => { errores.forEach(([i]) => setSyncStatus(i, 'error')); });
 }
 
 function sincronizarBackup() {
@@ -899,7 +953,7 @@ function selEstado(ci, pi, nombre, prefijo) {
   const hoy = new Date().toLocaleDateString('es-AR');
   pedidos[ci].prods[pi].estado = nombre;
   pedidos[ci].prods[pi].ultimoCambio = hoy;
-  save();
+  save(ci);
   const pop = document.getElementById(`${prefijo}-${ci}-${pi}`);
   if (pop) pop.classList.remove('open');
   activeEPop = null;
@@ -985,11 +1039,19 @@ function clienteCardHtml(p, i, showPrecio, allowNameEdit) {
   });
   const prodsHtml = prodsVisibles.map(x => prodRowHtml(i, x, p.prods.indexOf(x), showPrecio, allowNameEdit, prefijo)).join('');
 
+  const _si = fbSyncStatus[i] || {};
+  const _syncHtml = (() => {
+    if (_si.status === 'saving') return `<span style="color:#aaa;font-size:10px;">⏳ guardando…</span>`;
+    if (_si.status === 'ok') return `<span style="color:#7aaa8a;font-size:10px;" title="Guardado en la nube${_si.ts?' — '+fmtTs(_si.ts):''}">✓ ${fmtTs(_si.ts)}</span>`;
+    if (_si.status === 'error') return `<span style="color:#c97b7b;font-size:10px;">✗ ${fmtTs(_si.ts)}</span> <button onclick="reintentarSync(${i})" title="Reintentar" style="background:none;border:1px solid #c97b7b;color:#c97b7b;border-radius:4px;font-size:10px;padding:1px 5px;cursor:pointer;margin-left:3px;">↺</button>`;
+    return '';
+  })();
   const footerHtml = showPrecio
-    ? `<div class="c-footer">
+    ? `<div class="c-footer" style="position:relative;">
         <button class="btn-wa" onclick="genWA(${i})">Generar WhatsApp</button>
         <button class="btn-out" onclick="showTab('excel')">Excel</button>
         <button class="btn-out" onclick="abrirEditar(${i})">✏️ Editar</button>
+        <span id="sync-${i}" style="position:absolute;bottom:8px;right:12px;display:flex;align-items:center;gap:3px;">${_syncHtml}</span>
        </div><div id="wa-${i}"></div>`
     : `<div class="c-footer"><button class="btn-out" onclick="abrirEditar(${i})">✏️ Editar pedido</button></div>`;
 
@@ -1191,14 +1253,14 @@ function guardarPModal() {
   const {ci,pi} = pmEdit;
   pedidos[ci].prods[pi].nota = document.getElementById('pm-nota').value.trim();
   pedidos[ci].prods[pi].proveedor = document.getElementById('pm-proveedor').value.trim();
-  save(); cerrarPModal();
+  save(ci); cerrarPModal();
   const activeTab = document.querySelector('.tab.active')?.textContent.trim();
   if (activeTab==='Diseño') renderDiseno(); else renderPedidos();
 }
 
 // ── GUARDAR NOMBRE PROD ──
 function guardarNombreProd(ci, pi, val) {
-  if (val.trim()) { pedidos[ci].prods[pi].nombre = val.trim(); save(); }
+  if (val.trim()) { pedidos[ci].prods[pi].nombre = val.trim(); save(ci); }
 }
 
 // ── EDITAR PEDIDO ──
@@ -1244,7 +1306,7 @@ function abrirEditar(ci) {
 }
 
 function cambiarPago(ci, val) {
-  pedidos[ci].pago = val; save();
+  pedidos[ci].pago = val; save(ci);
   const sels = document.querySelectorAll('.pago-sel');
   // Update class without re-render
   const card = document.getElementById(`ccard-${ci}`);
@@ -1570,11 +1632,13 @@ function guardarPedido(){
       if(prev){np.estado=prev.estado;np.nota=prev.nota;np.proveedor=prev.proveedor;np.ultimoCambio=prev.ultimoCambio;}
     });
     pedidos[editCI]={...existing,bebe,mama,prods,pagos:document.getElementById('f-pagos').value.trim(),notas:document.getElementById('f-notas').value.trim()};
+    const savedIdx = editCI;
     editCI=null;
+    save(savedIdx); cerrarModal(); renderPedidos();
   } else {
     pedidos.unshift({bebe,mama,fecha:new Date().toLocaleDateString('es-AR'),prods,pagos:document.getElementById('f-pagos').value.trim(),notas:document.getElementById('f-notas').value.trim(),pago:''});
+    save(0); cerrarModal(); renderPedidos();
   }
-  save(); cerrarModal(); renderPedidos();
 }
 
 function showTab(name){
