@@ -28,7 +28,7 @@
     const tab = document.querySelector(".tab.active")?.textContent.trim(); 
     if (typeof renderDiseno === "function" && tab === "Diseño") renderDiseno(); else if (typeof renderPedidos === "function") renderPedidos(); 
   } } });
-  window.saveToFirebase = async function(data) { try { await setDoc(REF, { lista: data, updated: new Date().toISOString() }); } catch(e) { console.warn("Firebase:", e); throw e; } };
+  window.saveToFirebase = async function(data) { try { const clean = JSON.parse(JSON.stringify(data, (k,v) => v === undefined ? null : v)); await setDoc(REF, { lista: clean, updated: new Date().toISOString() }); } catch(e) { console.warn("Firebase:", e); throw e; } };
 </script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
