@@ -785,7 +785,7 @@ function updateSyncEl(el, i) {
   } else if (status === 'error') {
     el.innerHTML = `<span style="color:#c97b7b;font-size:10px;" title="Error al guardar${ts?' — '+tsStr:''}">✗ ${tsStr}</span> <button onclick="reintentarSync(${i})" title="Reintentar guardado" style="background:none;border:1px solid #c97b7b;color:#c97b7b;border-radius:4px;font-size:10px;padding:1px 5px;cursor:pointer;margin-left:3px;">↺</button>`;
   } else {
-    el.innerHTML = '';
+    el.innerHTML = `<span style="color:#bbb;font-size:10px;">— sin cambios</span>`;
   }
 }
 
