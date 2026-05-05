@@ -148,7 +148,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .total-label { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); font-weight:500; }
 .total-val { font-family:'Yeseva One',serif; font-size:20px; color:var(--marron-d); }
 .pf-row { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:8px; }
-.pf-top { display:grid; grid-template-columns:1fr 70px 70px 32px; gap:8px; align-items:center; }
+.pf-top { display:grid; grid-template-columns:1fr 100px 70px 32px; gap:8px; align-items:center; }
 .pf-wrap { position:relative; }
 .pf-inp { width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; background:var(--white); color:var(--text); font-family:'Montserrat',sans-serif; outline:none; }
 .pf-inp:focus { border-color:var(--rosa); }
@@ -205,7 +205,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .btn-save-e { padding:10px 24px; background:var(--marron-d); color:var(--rosa-l); border:none; border-radius:9px; cursor:pointer; font-size:10px; letter-spacing:2px; text-transform:uppercase; font-family:'Montserrat',sans-serif; font-weight:500; }
 
 @media(max-width:520px) {
-  .pf-top { grid-template-columns:1fr 60px 55px 32px; }
+  .pf-top { grid-template-columns:1fr 90px 55px 32px; }
   .estado-btn, .estado-empty-btn { min-width:80px; font-size:9px; }
 }
 </style>
@@ -645,7 +645,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 
 <!-- MODAL NUEVO/EDITAR PEDIDO -->
 <div class="overlay" id="modal">
-  <div class="mbox" style="max-width:540px;">
+  <div class="mbox" style="max-width:640px;">
     <div style="font-family:&#39;Yeseva One&#39;,serif;font-size:22px;margin-bottom:16px;" id="modal-titulo">Nuevo pedido</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
       <div class="fg" style="margin:0;"><label>Nombre bebé</label><input type="text" id="f-bebe" placeholder="Ej: Alma"></div>
@@ -755,7 +755,7 @@ function save(idx) {
   sincronizarBackup();
 }
 
-const fbSyncStatus = {};
+let fbSyncStatus = (()=>{ try{ return JSON.parse(localStorage.getItem('picabu_sync')||'{}'); }catch(e){ return {}; } })();
 
 function fmtTs(ts) {
   if (!ts) return '';
@@ -769,6 +769,7 @@ function fmtTs(ts) {
 
 function setSyncStatus(i, status) {
   fbSyncStatus[i] = { status, ts: status === 'saving' ? (fbSyncStatus[i]?.ts || null) : new Date().toISOString() };
+  try { localStorage.setItem('picabu_sync', JSON.stringify(fbSyncStatus)); } catch(e){}
   const el = document.getElementById(`sync-${i}`);
   if (el) updateSyncEl(el, i);
   actualizarBandeja();
@@ -1276,7 +1277,9 @@ function abrirEditar(ci) {
   container.innerHTML = '';
   // Agrupar productos por nombre+codigo+precio para mostrar cantidad
   const agrupados = [];
+  let fotosExtrasProd = null;
   p.prods.forEach(x => {
+    if (x.soloWA && x.fotosDetalle) { fotosExtrasProd = x; return; }
     const key = `${x.nombre}__${x.codigo}__${x.precio}`;
     const exist = agrupados.find(a => a.key === key);
     if (exist) { exist.cant++; } else { agrupados.push({key, x, cant:1}); }
@@ -1300,6 +1303,19 @@ function abrirEditar(ci) {
     </div>`;
     container.appendChild(div);
   });
+  recalc();
+  // Restaurar fotos extras si el pedido las tenía
+  const fotosForm = document.getElementById('fotos-extras-form');
+  if (fotosExtrasProd) {
+    fotosForm.style.display = 'block';
+    document.getElementById('fotos-tipo').value = fotosExtrasProd.fotosDetalle.tipo || 'general';
+    document.getElementById('fotos-cant').value = fotosExtrasProd.fotosDetalle.cant || '';
+    recalcFotos();
+  } else {
+    fotosForm.style.display = 'none';
+    document.getElementById('fotos-cant').value = '';
+    document.getElementById('fotos-res').textContent = '';
+  }
   recalc();
   document.getElementById('modal').classList.add('open');
   document.getElementById('btn-eliminar-pedido').style.display = 'inline-block';
