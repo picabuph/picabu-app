@@ -736,7 +736,9 @@ function load() {
         ultimoCambio: x.ultimoCambio || p.fecha || '',
         cantIdx: x.cantIdx,
         cantTotal: x.cantTotal,
-        uid: x.uid || ('u'+Date.now()+Math.random().toString(36).substr(2,6))
+        uid: x.uid || ('u'+Date.now()+Math.random().toString(36).substr(2,6)),
+        soloWA: x.soloWA || (x.codigo === 'FOTOS-EXTRA') || false,
+        fotosDetalle: x.fotosDetalle || null
       }));
     });
   } catch(e) { pedidos = []; }
