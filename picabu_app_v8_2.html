@@ -76,7 +76,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .c-header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; gap:10px; border-bottom:1px solid var(--border); }
 .drag-handle { color:var(--muted); cursor:grab; font-size:16px; flex-shrink:0; user-select:none; }
 .c-nombre { font-family:'Yeseva One',serif; font-size:15px; color:var(--marron-d); display:inline; }
-.c-mama { font-size:13px; color:var(--muted); font-weight:300; display:inline; margin-left:8px; }
+.c-mama { font-family:'Montserrat',sans-serif; font-size:13px; color:var(--muted); font-weight:300; display:inline; margin-left:8px; }
 .c-meta { font-size:11px; color:var(--muted); margin-top:2px; }
 .c-right { display:flex; align-items:center; gap:10px; flex-shrink:0; }
 .c-total { font-family:'Yeseva One',serif; font-size:16px; color:var(--marron-d); }
@@ -1141,7 +1141,7 @@ function renderDiseno() {
     const activos = p.prods.filter(x => x.estado !== 'Entregado');
     if (activos.length > 0 && activos.every(x => x.estado === 'Listo en estudio')) {
       const key = `${p.bebe} · ${p.mama}`;
-      gruposEnt[key] = true;
+      gruposEnt[key] = { tieneSaldo: p.pago === 'Saldo pendiente' };
     }
   });
 
@@ -1166,15 +1166,47 @@ function renderDiseno() {
   const entEl = document.getElementById('alertas-entrega');
   const keysEnt = Object.keys(gruposEnt);
   const contactados = getContactados();
+  const DIAS_SEGUIMIENTO = 2;
+  const ahora = Date.now();
+  const MS_2DIAS = DIAS_SEGUIMIENTO * 24 * 60 * 60 * 1000;
+
+  // Pendientes: nunca contactados
   const pendientesEnt = keysEnt.filter(k => !contactados[k]);
-  if (pendientesEnt.length) {
-    entEl.innerHTML = `<div class="alert-box">
-      <div class="alert-title">Coordinar entrega</div>
+  // Seguimiento saldo: ya contactados, tienen saldo, pasaron 2+ días
+  const seguimientoSaldo = keysEnt.filter(k => {
+    const c = contactados[k];
+    if (!c || !c.ts) return false;
+    if (!gruposEnt[k].tieneSaldo) return false;
+    return (ahora - c.ts) >= MS_2DIAS;
+  });
+
+  const hayAlertas = pendientesEnt.length > 0 || seguimientoSaldo.length > 0;
+  if (hayAlertas) {
+    let html = `<div class="alert-box">`;
+    if (pendientesEnt.length) {
+      html += `<div class="alert-title">Coordinar entrega</div>
       ${pendientesEnt.map(k=>`<div class="alert-grupo" style="display:flex;align-items:center;gap:8px;">
         <input type="checkbox" onchange="marcarContactado('${k.replace(/'/g,"\\'")}',this.checked)" style="accent-color:var(--marron);width:15px;height:15px;cursor:pointer;flex-shrink:0;">
         <div class="alert-cliente" style="margin:0;">${k}</div>
-      </div>`).join('')}
-    </div>`;
+      </div>`).join('')}`;
+    }
+    if (seguimientoSaldo.length) {
+      html += `${pendientesEnt.length ? '<div style="margin-top:10px;border-top:1px solid #e8c5c5;padding-top:10px;"></div>' : ''}
+      <div class="alert-title" style="color:#a05050;">⏰ Seguimiento — tiene saldo pendiente</div>
+      ${seguimientoSaldo.map(k=>{
+        const c = contactados[k];
+        const diasPasados = Math.floor((ahora - c.ts) / (24*60*60*1000));
+        return `<div class="alert-grupo" style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" onchange="marcarContactado('${k.replace(/'/g,"\\'")}',this.checked)" style="accent-color:var(--marron);width:15px;height:15px;cursor:pointer;flex-shrink:0;">
+          <div style="flex:1;">
+            <div class="alert-cliente" style="margin:0;">${k}</div>
+            <div style="font-size:10px;color:#a05050;margin-top:2px;">Hace ${diasPasados} día${diasPasados!==1?'s':''} sin actualización · volvé a contactar</div>
+          </div>
+        </div>`;
+      }).join('')}`;
+    }
+    html += `</div>`;
+    entEl.innerHTML = html;
   } else {
     entEl.innerHTML = '';
   }
@@ -1725,7 +1757,7 @@ function getContactados(){ try{return JSON.parse(localStorage.getItem('picabu_co
 function saveContactados(o){ localStorage.setItem('picabu_contactados',JSON.stringify(o)); }
 function marcarContactado(key, checked){
   const o=getContactados();
-  if(checked) o[key]=1; else delete o[key];
+  if(checked) o[key]={ ts: Date.now() }; else delete o[key];
   saveContactados(o);
   renderDiseno();
 }
