@@ -94,11 +94,11 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .prod-nombre { flex:1; font-size:13px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .prod-nombre-edit { flex:1; font-size:13px; font-family:'Montserrat',sans-serif; border:none; background:transparent; color:var(--text); outline:none; min-width:0; }
 .prod-nombre-edit:focus { background:var(--arena-l); border-radius:4px; padding:2px 6px; }
-.prod-precio { font-size:12px; color:var(--muted); white-space:nowrap; flex-shrink:0; min-width:70px; text-align:right; }
+.prod-precio { font-size:12px; color:var(--muted); white-space:nowrap; flex-shrink:0; width:80px; text-align:right; }
 .nota-ico { font-size:12px; flex-shrink:0; width:18px; text-align:center; }
 
 /* ESTADO INLINE */
-.estado-wrap { position:relative; flex-shrink:0; }
+.estado-wrap { position:relative; flex-shrink:0; width:140px; }
 .estado-btn { font-size:10px; font-weight:500; padding:4px 10px; border-radius:20px; border:none; cursor:pointer; white-space:nowrap; font-family:'Montserrat',sans-serif; min-width:100px; text-align:center; }
 .estado-empty-btn { font-size:10px; color:var(--muted); padding:4px 10px; border-radius:20px; border:1px dashed var(--border); background:none; cursor:pointer; white-space:nowrap; min-width:100px; font-family:'Montserrat',sans-serif; }
 .estado-pop { display:none; position:absolute; right:0; top:calc(100% + 4px); background:var(--white); border:1px solid var(--border); border-radius:10px; z-index:500; width:210px; box-shadow:0 6px 24px rgba(58,46,42,0.15); }
@@ -575,6 +575,14 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
           <input id="db-codigo" type="text" placeholder="Código (opcional)" style="border:1px solid var(--arena);border-radius:8px;padding:8px;font-family:'Montserrat',sans-serif;font-size:13px;width:130px;">
           <input id="db-precio" type="number" placeholder="Precio" style="border:1px solid var(--arena);border-radius:8px;padding:8px;font-family:'Montserrat',sans-serif;font-size:13px;width:110px;">
           <button class="btn-cfg-pri" onclick="agregarProdDB()">Agregar</button>
+        </div>
+      </div>
+      <div style="margin-top:20px;">
+        <div class="cfg-title">Precio fotos extras</div>
+        <div class="cfg-sub">El precio por foto cambia segun la cantidad. Edita los valores y se aplican a los pedidos nuevos.</div>
+        <div style="display:flex;gap:32px;flex-wrap:wrap;margin-top:12px;">
+          <div><div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#999;margin-bottom:8px;">Anito / Familia / 2-3 anos</div><div id="tarifas-fotos-general"></div></div>
+          <div><div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#999;margin-bottom:8px;">Recien nacidos / Maternidad</div><div id="tarifas-fotos-rn"></div></div>
         </div>
       </div>
     </div>
@@ -1496,6 +1504,9 @@ function abrirModal() {
   ['f-bebe','f-mama','f-pagos','f-notas'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('prods-form').innerHTML='';
   document.getElementById('total-rt').textContent='$0';
+  document.getElementById('fotos-extras-form').style.display='none';
+  document.getElementById('fotos-cant').value='';
+  document.getElementById('fotos-res').textContent='';
   addProdRow();
   document.getElementById('modal').classList.add('open');
   document.getElementById('btn-eliminar-pedido').style.display='none';
@@ -1665,7 +1676,7 @@ function showTab(name){
   if(name==='diseno') renderDiseno();
   if(name==='envio') renderEnvio();
   if(name==='excel') renderExcel();
-  if(name==='precios') renderDBConfig();
+  if(name==='precios'){ renderDBConfig(); renderTarifasFotos(); }
   if(name==='config') renderEstadosConfig();
 }
 
@@ -1718,10 +1729,50 @@ function marcarContactado(key, checked){
 }
 
 // ── TARIFAS FOTOS EXTRAS ──
-const TARIFAS_FOTOS = {
+const TARIFAS_FOTOS_DEFAULT = {
   general:  [{hasta:10,p:8500},{hasta:20,p:8100},{hasta:30,p:7700},{hasta:999,p:7200}],
   rn:       [{hasta:10,p:9000},{hasta:20,p:8600},{hasta:30,p:8100},{hasta:999,p:7700}]
 };
+function getTarifasFotos(){ try{ var s=localStorage.getItem("picabu_tarifas_fotos"); return s?JSON.parse(s):JSON.parse(JSON.stringify(TARIFAS_FOTOS_DEFAULT)); }catch(e){ return JSON.parse(JSON.stringify(TARIFAS_FOTOS_DEFAULT)); } }
+function saveTarifasFotos(obj){ localStorage.setItem("picabu_tarifas_fotos",JSON.stringify(obj)); }
+function renderTarifasFotos(){
+  var t=getTarifasFotos();
+  var lbls=["Hasta 10","Hasta 20","Hasta 30","Mas de 30"];
+  ["general","rn"].forEach(function(tipo){
+    var wrap=document.getElementById("tarifas-fotos-"+tipo);
+    if(!wrap) return;
+    var frag=document.createDocumentFragment();
+    t[tipo].forEach(function(r,i){
+      var row=document.createElement("div");
+      row.style.cssText="display:flex;align-items:center;gap:8px;margin-bottom:6px;";
+      var lbl=document.createElement("span");
+      lbl.style.cssText="font-size:12px;color:#999;width:110px;flex-shrink:0;";
+      lbl.textContent=lbls[i]+" fotos";
+      var sym=document.createElement("span");
+      sym.style.cssText="font-size:12px;color:#999;";
+      sym.textContent="$";
+      var inp=document.createElement("input");
+      inp.type="number"; inp.value=r.p; inp.min=0; inp.step=100;
+      inp.style.cssText="border:1px solid #e0c9b9;border-radius:8px;padding:6px 8px;font-size:13px;width:100px;";
+      inp.dataset.tipo=tipo; inp.dataset.idx=i;
+      inp.addEventListener("input",function(){ actualizarTarifa(this.dataset.tipo, parseInt(this.dataset.idx), this.value); });
+      var cu=document.createElement("span");
+      cu.style.cssText="font-size:11px;color:#999;";
+      cu.textContent="c/u";
+      row.appendChild(lbl); row.appendChild(sym); row.appendChild(inp); row.appendChild(cu);
+      frag.appendChild(row);
+    });
+    wrap.innerHTML="";
+    wrap.appendChild(frag);
+  });
+}
+function actualizarTarifa(tipo,idx,valor){
+  var t=getTarifasFotos();
+  t[tipo][idx].p=Number(valor)||0;
+  TARIFAS_FOTOS[tipo]=t[tipo];
+  saveTarifasFotos(t);
+}
+const TARIFAS_FOTOS = getTarifasFotos();
 function getPrecioFotos(tipo, cant){
   const tabla = TARIFAS_FOTOS[tipo] || TARIFAS_FOTOS.general;
   const rango = tabla.find(r => cant <= r.hasta);
@@ -1831,7 +1882,7 @@ function editarProdDB(i){
   saveDBUser(arr); renderDBConfig();
 }
 
-load(); renderPedidos();
+load(); renderPedidos(); renderTarifasFotos();
 </script>
 
 
