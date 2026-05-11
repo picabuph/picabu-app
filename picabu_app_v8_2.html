@@ -79,7 +79,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .c-header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; gap:10px; border-bottom:1px solid var(--border); }
 .drag-handle { color:var(--muted); cursor:grab; font-size:16px; flex-shrink:0; user-select:none; }
 .c-nombre { font-family:'Yeseva One',serif; font-size:15px; color:var(--marron-d); display:inline; }
-.c-mama { font-family:'Montserrat',sans-serif; font-size:13px; color:var(--muted); font-weight:300; display:inline; margin-left:8px; }
+.c-mama { font-family:'Montserrat',sans-serif; font-size:13px; color:var(--muted); font-weight:300; display:inline; margin-left:8px; white-space:nowrap; }
 .c-meta { font-size:11px; color:var(--muted); margin-top:2px; }
 .c-right { display:flex; align-items:center; gap:10px; flex-shrink:0; }
 .c-total { font-family:'Yeseva One',serif; font-size:16px; color:var(--marron-d); }
@@ -243,18 +243,27 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
   .prod-row:has(.ficha-btn) .estado-empty-btn    { width:100%; font-size:10px; min-width:unset; }
 
   /* ── PEDIDOS mobile: 2 líneas (sin ficha-btn) ── */
-  .prod-row-pedidos { flex-wrap:wrap; gap:0; padding:8px 0; row-gap:0; }
-  .prod-row-pedidos .drag-handle                 { order:1; flex-shrink:0; margin-right:6px; }
-  .prod-row-pedidos .prod-nombre                 { order:2; flex:1; font-size:12px; min-width:0; white-space:normal; overflow:visible; text-overflow:unset; }
-  .prod-row-pedidos .nota-ico                    { order:3; width:auto; font-size:11px; flex-shrink:0; }
-  .prod-row-pedidos::after                       { content:''; display:block; width:100%; order:9; height:0; }
-  .prod-row-pedidos .prod-precio                 { order:10; display:block; font-size:11px; color:var(--muted); margin-top:3px; padding-left:22px; flex-basis:100%; text-align:left; }
-  .prod-row-pedidos .estado-wrap                 { order:11; flex:1; min-width:0; margin-top:5px; width:auto; }
-  .prod-row-pedidos .estado-btn                  { font-size:10px; text-align:center; min-width:unset; }
-  .prod-row-pedidos .estado-empty-btn            { font-size:10px; min-width:unset; }
+  .prod-row-pedidos,
+  .prod-row:not(:has(.ficha-btn)) { flex-wrap:wrap; gap:0; padding:8px 0; row-gap:0; }
+  .prod-row-pedidos .drag-handle,
+  .prod-row:not(:has(.ficha-btn)) .drag-handle   { order:1; flex-shrink:0; margin-right:6px; }
+  .prod-row-pedidos .prod-nombre,
+  .prod-row:not(:has(.ficha-btn)) .prod-nombre   { order:2; flex:1; font-size:12px; min-width:0; white-space:normal; overflow:visible; text-overflow:unset; }
+  .prod-row-pedidos .nota-ico,
+  .prod-row:not(:has(.ficha-btn)) .nota-ico      { order:3; width:auto; font-size:11px; flex-shrink:0; }
+  .prod-row-pedidos::after,
+  .prod-row:not(:has(.ficha-btn))::after         { content:''; display:block; width:100%; order:9; height:0; }
+  .prod-row-pedidos .prod-precio,
+  .prod-row:not(:has(.ficha-btn)) .prod-precio   { order:10; display:block !important; font-size:11px; color:var(--muted); margin-top:3px; padding-left:0; flex-basis:auto; text-align:left; width:auto; }
+  .prod-row-pedidos .estado-wrap,
+  .prod-row:not(:has(.ficha-btn)) .estado-wrap   { order:11; flex:1; min-width:0; margin-top:5px; width:auto; }
+  .prod-row-pedidos .estado-btn,
+  .prod-row:not(:has(.ficha-btn)) .estado-btn    { font-size:10px; text-align:center; min-width:unset; }
+  .prod-row-pedidos .estado-empty-btn,
+  .prod-row:not(:has(.ficha-btn)) .estado-empty-btn { font-size:10px; min-width:unset; }
 
-  /* Fix 2: nombre mamá no se fracciona */
-  .c-mama { display:block; margin-left:0; margin-top:1px; }
+  /* Fix 2: nombre mamá no se fracciona — bloque propio para mayor especificidad */
+  .c-header .c-mama { display:block !important; margin-left:0; margin-top:1px; white-space:normal; }
 
   .container { padding:12px 8px; }
 }
