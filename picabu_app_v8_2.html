@@ -9,6 +9,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Picabú">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Yeseva+One&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -213,7 +215,6 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 
 @media(max-width:520px) {
   .pf-top { grid-template-columns:1fr 90px 55px 32px; }
-  .estado-btn, .estado-empty-btn { min-width:80px; font-size:9px; }
 
   /* Header más compacto */
   header { padding:10px 14px; }
@@ -226,36 +227,38 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
   .c-nombre { font-size:14px; }
   .c-mama { font-size:10px; }
   .c-total { font-size:13px; }
-
-  /* Prod row mobile: 2 líneas exactas */
   .c-body { padding:4px 10px 10px; }
+
+  /* Prod row base mobile */
   .prod-drag { display:none; }
-  .prod-row { flex-wrap:wrap; gap:0; padding:7px 0; align-items:center; }
-
-  /* Línea 1: ícono + nombre */
-  .ficha-btn { order:1; margin-right:7px; }
-  .prod-nombre, .prod-nombre-edit { order:2; flex:1; font-size:12px; min-width:0; }
   .prod-precio { display:none; }
-  .nota-ico { order:3; width:auto; font-size:11px; }
+  .prod-row { flex-wrap:wrap; gap:0; padding:8px 0; align-items:center; row-gap:5px; }
+  .estado-pop { right:auto; left:0; width:90vw; }
 
-  /* Línea 2: nped-tag + estado — forzar salto */
-  .nped-tag { order:10; margin-top:5px; margin-right:6px; flex-shrink:0; }
-  .estado-wrap { order:11; flex:1; margin-top:5px; min-width:0; width:auto; }
-  .estado-btn { min-width:unset; width:100%; font-size:10px; text-align:center; }
-  .estado-empty-btn { min-width:unset; width:100%; font-size:10px; }
+  /* ── PEDIDOS mobile: línea 1 = nombre · nota / línea 2 = estado ── */
+  /* Usamos :not(:has(.ficha-btn)) para apuntar solo a Pedidos */
+  .prod-row:not(:has(.ficha-btn)) .prod-nombre { order:1; flex:1; font-size:12px; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .prod-row:not(:has(.ficha-btn)) .nota-ico    { order:2; width:auto; font-size:11px; flex-shrink:0; }
+  .prod-row:not(:has(.ficha-btn))::after        { content:''; display:block; width:100%; order:9; height:0; }
+  .prod-row:not(:has(.ficha-btn)) .estado-wrap  { order:10; flex:1; width:100%; min-width:0; }
+  .prod-row:not(:has(.ficha-btn)) .estado-btn   { width:100%; font-size:10px; text-align:center; min-width:unset; }
+  .prod-row:not(:has(.ficha-btn)) .estado-empty-btn { width:100%; font-size:10px; min-width:unset; }
 
-  /* Forzar salto entre línea 1 y línea 2 */
-  .ficha-btn, .prod-nombre, .prod-nombre-edit, .nota-ico { flex-shrink:0; }
-  .prod-row::after { content:''; display:block; width:100%; order:9; height:0; }
+  /* ── DISEÑO mobile: línea 1 = ficha-btn · nombre · nota / línea 2 = nped-tag · estado ── */
+  .ficha-btn { order:1; margin-right:7px; flex-shrink:0; }
+  .prod-row:has(.ficha-btn) .prod-nombre-edit   { order:2; flex:1; font-size:12px; min-width:0; }
+  .prod-row:has(.ficha-btn) .nota-ico            { order:3; width:auto; font-size:11px; flex-shrink:0; }
+  .prod-row:has(.ficha-btn)::after               { content:''; display:block; width:100%; order:9; height:0; }
+  .nped-tag { order:10; margin-top:0; margin-right:6px; flex-shrink:0; }
+  .prod-row:has(.ficha-btn) .estado-wrap         { order:11; flex:1; min-width:0; }
+  .prod-row:has(.ficha-btn) .estado-btn          { width:100%; font-size:10px; text-align:center; min-width:unset; }
+  .prod-row:has(.ficha-btn) .estado-empty-btn    { width:100%; font-size:10px; min-width:unset; }
 
   /* Footer con botones */
   .c-footer { flex-wrap:wrap; gap:6px; padding:8px 10px; }
   .btn-wa { font-size:9px; padding:7px 12px; }
   .btn-out { font-size:9px; padding:7px 10px; }
   .btn-edit { font-size:9px; padding:7px 10px; }
-
-  /* Estado pop no se salga de pantalla */
-  .estado-pop { right:auto; left:0; width:90vw; }
 
   .container { padding:12px 8px; }
 }
