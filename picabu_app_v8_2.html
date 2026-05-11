@@ -251,7 +251,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
   .prod-row-pedidos .drag-handle,
   .prod-row:not(:has(.ficha-btn)) .drag-handle   { order:1; flex-shrink:0; margin-right:6px; align-self:center; }
   .prod-row-pedidos .prod-nombre,
-  .prod-row:not(:has(.ficha-btn)) .prod-nombre   { order:2; flex-basis:calc(100% - 30px); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .prod-row:not(:has(.ficha-btn)) .prod-nombre   { order:2; flex:none !important; width:calc(100% - 30px); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .prod-row-pedidos .nota-ico,
   .prod-row:not(:has(.ficha-btn)) .nota-ico      { display:none; }
   /* salto de línea */
