@@ -227,16 +227,26 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
   .c-mama { font-size:10px; }
   .c-total { font-size:13px; }
 
-  /* Prod row: apilado en mobile */
+  /* Prod row mobile: 2 líneas exactas */
   .c-body { padding:4px 10px 10px; }
-  .prod-row { flex-wrap:wrap; gap:4px; padding:8px 0; }
   .prod-drag { display:none; }
-  .prod-nombre, .prod-nombre-edit { width:100%; font-size:12px; flex:none; }
-  .prod-precio { width:auto; font-size:11px; order:2; }
-  .nota-ico { order:3; width:auto; }
-  .estado-wrap { order:4; flex:1; min-width:120px; width:auto; }
-  .estado-btn, .estado-empty-btn { min-width:unset; width:100%; font-size:10px; }
-  .detail-btn { order:5; margin-left:auto; }
+  .prod-row { flex-wrap:wrap; gap:0; padding:7px 0; align-items:center; }
+
+  /* Línea 1: ícono + nombre */
+  .ficha-btn { order:1; margin-right:7px; }
+  .prod-nombre, .prod-nombre-edit { order:2; flex:1; font-size:12px; min-width:0; }
+  .prod-precio { display:none; }
+  .nota-ico { order:3; width:auto; font-size:11px; }
+
+  /* Línea 2: nped-tag + estado — forzar salto */
+  .nped-tag { order:10; margin-top:5px; margin-right:6px; flex-shrink:0; }
+  .estado-wrap { order:11; flex:1; margin-top:5px; min-width:0; width:auto; }
+  .estado-btn { min-width:unset; width:100%; font-size:10px; text-align:center; }
+  .estado-empty-btn { min-width:unset; width:100%; font-size:10px; }
+
+  /* Forzar salto entre línea 1 y línea 2 */
+  .ficha-btn, .prod-nombre, .prod-nombre-edit, .nota-ico { flex-shrink:0; }
+  .prod-row::after { content:''; display:block; width:100%; order:9; height:0; }
 
   /* Footer con botones */
   .c-footer { flex-wrap:wrap; gap:6px; padding:8px 10px; }
