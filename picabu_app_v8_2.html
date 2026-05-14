@@ -1176,6 +1176,10 @@ function clienteCardHtml(p, i, showPrecio, allowNameEdit) {
 
   const activosP = p.prods.filter(x => x.estado !== 'Entregado');
   const todoListo = activosP.length > 0 && activosP.every(x => x.estado === 'Listo en estudio');
+  const sesionesEq = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : [];
+  const equipoSesCard = sesionesEq.find(s => s.mama && s.mama.toLowerCase() === (p.mama||'').toLowerCase() && s.bebe && s.bebe.toLowerCase().includes((p.bebe||'').toLowerCase()));
+  const videoHecho = equipoSesCard?.tareaVideoHecho === true;
+  const videoSinGrabar = equipoSesCard?.videoSinGrabar === true;
   const hayVideoPendiente = allowNameEdit && todoListo && videoPendiente(p);
 
   const _si = fbSyncStatus[i] || {};
@@ -1192,7 +1196,7 @@ function clienteCardHtml(p, i, showPrecio, allowNameEdit) {
         <button class="btn-out" onclick="abrirEditar(${i})">✏️ Editar</button>
         <span id="sync-${i}" style="position:absolute;bottom:8px;right:12px;display:flex;align-items:center;gap:3px;">${_syncHtml}</span>
        </div><div id="wa-${i}"></div>`
-    : `<div class="c-footer" style="position:relative;"><button class="btn-out" onclick="abrirEditar(${i})">✏️ Editar pedido</button>${hayVideoPendiente ? `<button class="btn-out" style="background:#f0d8e0;color:#7a2a3a;border-color:#e8b4c0;" onclick="window.marcarSinVideo('${p.bebe.replace(/'/g,"\\'")}','${p.mama.replace(/'/g,"\\'")}')">Sin video</button>` : ''}<span id="dsync-${i}" style="position:absolute;bottom:8px;right:12px;display:flex;align-items:center;gap:3px;">${_syncHtml}</span></div>`;
+    : `<div class="c-footer" style="position:relative;"><button class="btn-out" onclick="abrirEditar(${i})">✏️ Editar pedido</button>${hayVideoPendiente && !videoSinGrabar ? `<button class="btn-out" style="background:#f0d8e0;color:#7a2a3a;border-color:#e8b4c0;" onclick="window.marcarSinVideo('${p.bebe.replace(/'/g,"\\'")}','${p.mama.replace(/'/g,"\\'")}')">— Sin video</button>` : ''}${videoSinGrabar ? `<span style="font-size:10px;color:#888;padding:0 8px;">— Sin video ✓</span>` : ''}<span id="dsync-${i}" style="position:absolute;bottom:8px;right:12px;display:flex;align-items:center;gap:3px;">${_syncHtml}</span></div>`;
 
   return `<div class="c-card" id="ccard-${i}"
       ondragover="onDragOverCliente(event,${i})"
@@ -1201,7 +1205,7 @@ function clienteCardHtml(p, i, showPrecio, allowNameEdit) {
     <div class="c-header">
       <span class="drag-handle" draggable="true" ondragstart="onDragStartCliente(event,${i})">⠿</span>
       <div style="flex:1;min-width:0;">
-        <div><span class="c-nombre">${p.bebe}</span><span class="c-mama">${p.mama}</span>${hayVideoPendiente ? `<span style="background:#e8b4c0;color:#7a2a3a;font-size:9px;font-weight:600;padding:2px 7px;border-radius:10px;letter-spacing:0.5px;margin-left:6px;">video pendiente</span>` : ''}</div>
+        <div><span class="c-nombre">${p.bebe}</span><span class="c-mama">${p.mama}</span>${hayVideoPendiente ? `<span style="background:#e8b4c0;color:#7a2a3a;font-size:9px;font-weight:600;padding:2px 7px;border-radius:10px;letter-spacing:0.5px;margin-left:6px;">🎬 video pendiente</span>` : ''}${videoHecho ? `<span style="background:#d4f0e0;color:#2a6a47;font-size:9px;font-weight:600;padding:2px 7px;border-radius:10px;letter-spacing:0.5px;margin-left:6px;">✓ video hecho</span>` : ''}${videoSinGrabar ? `<span style="background:var(--arena-l,#f0ebe5);color:#888;font-size:9px;font-weight:600;padding:2px 7px;border-radius:10px;letter-spacing:0.5px;margin-left:6px;">— sin video</span>` : ''}</div>
         ${p.notas?`<div class="c-meta">📌 ${p.notas}</div>`:''}
       </div>
       <div class="c-right">
