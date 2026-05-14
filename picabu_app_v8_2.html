@@ -38,8 +38,7 @@
   onSnapshot(EQUIPO_REF, (snap) => {
     if (snap.exists() && snap.data()?.lista) {
       _equipoSesiones = snap.data().lista;
-      const tab = document.querySelector(".tab.active")?.textContent.trim();
-      if (typeof renderDiseno === "function" && tab === "Diseño") renderDiseno();
+      if (typeof window.renderDiseno === "function") window.renderDiseno();
     }
   });
   window._getEquipoSesiones = function() { return _equipoSesiones; };
