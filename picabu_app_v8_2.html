@@ -45,8 +45,8 @@
   window._getEquipoSesiones = function() { return _equipoSesiones; };
   window.marcarSinVideo = async function(bebe, mama) {
     const lista = _equipoSesiones.map(s => {
-      if (s.bebe && s.bebe.toLowerCase() === (bebe||'').toLowerCase() &&
-          s.mama && s.mama.toLowerCase() === (mama||'').toLowerCase()) {
+      if (s.mama && s.mama.toLowerCase() === (mama||'').toLowerCase() &&
+          s.bebe && s.bebe.toLowerCase().includes((bebe||'').toLowerCase())) {
         return { ...s, videoSinGrabar: true };
       }
       return s;
@@ -1250,8 +1250,8 @@ function renderPedidos() {
 function videoPendiente(p) {
   const sesiones = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : [];
   const s = sesiones.find(s =>
-    s.bebe && s.bebe.toLowerCase() === (p.bebe||'').toLowerCase() &&
-    s.mama && s.mama.toLowerCase() === (p.mama||'').toLowerCase()
+    s.mama && s.mama.toLowerCase() === (p.mama||'').toLowerCase() &&
+    s.bebe && s.bebe.toLowerCase().includes((p.bebe||'').toLowerCase())
   );
   return s ? (s.tareaVideoPendiente === true && s.tareaVideoHecha !== true && s.videoSinGrabar !== true) : false;
 }
