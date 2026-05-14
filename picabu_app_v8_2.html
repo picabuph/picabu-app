@@ -1252,7 +1252,7 @@ function videoPendiente(p) {
     s.mama && s.mama.toLowerCase() === (p.mama||'').toLowerCase() &&
     s.bebe && s.bebe.toLowerCase().includes((p.bebe||'').toLowerCase())
   );
-  return s ? (s.tareaVideoPendiente === true && s.tareaVideoHecha !== true && s.videoSinGrabar !== true) : false;
+  return s ? (s.tareaVideoPendiente === true && s.tareaVideoHecho !== true && s.videoSinGrabar !== true) : false;
 }
 
 // ── RENDER DISEÑO ──
@@ -1277,7 +1277,10 @@ function renderDiseno() {
   const gruposEnt = {};
   pedidos.forEach((p) => {
     const activos = p.prods.filter(x => x.estado !== 'Entregado');
-    if (activos.length > 0 && activos.every(x => x.estado === 'Listo en estudio') && !videoPendiente(p)) {
+    const sesiones = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : [];
+    const equipoS = sesiones.find(s => s.mama && s.mama.toLowerCase() === (p.mama||'').toLowerCase() && s.bebe && s.bebe.toLowerCase().includes((p.bebe||'').toLowerCase()));
+    const videoResuelto = !equipoS || equipoS.tareaVideoHecho === true || equipoS.videoSinGrabar === true;
+    if (activos.length > 0 && activos.every(x => x.estado === 'Listo en estudio') && videoResuelto) {
       const key = `${p.bebe} · ${p.mama}`;
       gruposEnt[key] = { tieneSaldo: p.pago === 'Saldo pendiente' };
     }
