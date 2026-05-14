@@ -1081,7 +1081,21 @@ document.addEventListener('click', e => {
 });
 
 // ── PROD ROW HTML ──
-function prodRowHtml(ci, x, pi, showPrecio, allowNameEdit, prefijo) {
+// Traduce nombre de fotolibro sumando páginas de plantillas de datos (solo para vista Diseño)
+function nombreDiseno(pedido, x) {
+  const m = (x.nombre||'').match(/^(.*\()(\d+)(H\).*)$/i);
+  if (!m) return x.nombre || '';
+  // Sumar páginas de plantillas de datos del mismo pedido
+  let extras = 0;
+  (pedido.prods||[]).forEach(p => {
+    const pm = (p.nombre||'').match(/^(\d+)\s*plantillas?\s*(de\s*)?datos/i);
+    if (pm) extras += parseInt(pm[1]);
+  });
+  if (!extras) return x.nombre || '';
+  return m[1] + (parseInt(m[2]) + extras) + m[3];
+}
+
+function prodRowHtml(ci, x, pi, showPrecio, allowNameEdit, prefijo, pedido) {
   // Fila especial para fotos extras
   if (x.soloWA && x.fotosDetalle) {
     const {cant, ppu} = x.fotosDetalle;
@@ -1102,8 +1116,12 @@ function prodRowHtml(ci, x, pi, showPrecio, allowNameEdit, prefijo) {
     : `<button class="estado-empty-btn" onclick="event.stopPropagation();toggleEstado(${ci},${pi},'${prefijo}')">+ estado</button>`;
 
   const nombreStr = (x.nombre||'').replace(/"/g,'&quot;');
+  const nombreMostrar = (allowNameEdit && pedido) ? nombreDiseno(pedido, x) : (x.nombre||'');
+  const esTraducido = nombreMostrar !== (x.nombre||'');
   const nombreHtml = allowNameEdit
-    ? `<input class="prod-nombre-edit" value="${nombreStr}" onblur="guardarNombreProd(${ci},${pi},this.value)" onclick="event.stopPropagation()">`
+    ? (esTraducido
+        ? `<div class="prod-nombre-edit" style="cursor:default;" title="Calculado automáticamente: ${(x.nombre||'').replace(/"/g,'&quot;')} + plantillas">${nombreMostrar}</div>`
+        : `<input class="prod-nombre-edit" value="${nombreStr}" onblur="guardarNombreProd(${ci},${pi},this.value)" onclick="event.stopPropagation()">`)
     : `<div class="prod-nombre">${x.nombre||''}</div>`;
 
   const precioHtml = showPrecio ? `<div class="prod-precio">${fmt(x.precio)}</div>` : '';
@@ -1183,7 +1201,7 @@ function clienteCardHtml(p, i, showPrecio, allowNameEdit) {
     if (vistos.has(x.nombre)) return false;
     vistos.add(x.nombre); return true;
   });
-  const prodsHtml = prodsVisibles.map(x => prodRowHtml(i, x, p.prods.indexOf(x), showPrecio, allowNameEdit, prefijo)).join('');
+  const prodsHtml = prodsVisibles.map(x => prodRowHtml(i, x, p.prods.indexOf(x), showPrecio, allowNameEdit, prefijo, p)).join('');
 
   const activosP = p.prods.filter(x => x.estado !== 'Entregado');
   const todoListo = activosP.length > 0 && activosP.every(x => x.estado === 'Listo en estudio');
