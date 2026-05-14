@@ -31,6 +31,29 @@
     if (typeof renderDiseno === "function" && tab === "Diseño") renderDiseno(); else if (typeof renderPedidos === "function") renderPedidos(); 
   } } });
   window.saveToFirebase = async function(data) { try { const clean = JSON.parse(JSON.stringify(data, (k,v) => v === undefined ? null : v)); await setDoc(REF, { lista: clean, updated: new Date().toISOString() }); } catch(e) { console.warn("Firebase:", e); throw e; } };
+
+  // ── EQUIPO/SESIONES (video Renu) ──
+  let _equipoSesiones = [];
+  const EQUIPO_REF = doc(db, "equipo", "sesiones");
+  onSnapshot(EQUIPO_REF, (snap) => {
+    if (snap.exists() && snap.data()?.lista) {
+      _equipoSesiones = snap.data().lista;
+      const tab = document.querySelector(".tab.active")?.textContent.trim();
+      if (typeof renderDiseno === "function" && tab === "Diseño") renderDiseno();
+    }
+  });
+  window._getEquipoSesiones = function() { return _equipoSesiones; };
+  window.marcarSinVideo = async function(bebe, mama) {
+    const lista = _equipoSesiones.map(s => {
+      if (s.bebe && s.bebe.toLowerCase() === (bebe||'').toLowerCase() &&
+          s.mama && s.mama.toLowerCase() === (mama||'').toLowerCase()) {
+        return { ...s, videoSinGrabar: true };
+      }
+      return s;
+    });
+    try { await setDoc(EQUIPO_REF, { lista, updated: new Date().toISOString() }); }
+    catch(e) { console.warn("Firebase marcarSinVideo:", e); }
+  };
 </script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1152,6 +1175,10 @@ function clienteCardHtml(p, i, showPrecio, allowNameEdit) {
   });
   const prodsHtml = prodsVisibles.map(x => prodRowHtml(i, x, p.prods.indexOf(x), showPrecio, allowNameEdit, prefijo)).join('');
 
+  const activosP = p.prods.filter(x => x.estado !== 'Entregado');
+  const todoListo = activosP.length > 0 && activosP.every(x => x.estado === 'Listo en estudio');
+  const hayVideoPendiente = allowNameEdit && todoListo && videoPendiente(p);
+
   const _si = fbSyncStatus[i] || {};
   const _syncHtml = (() => {
     if (_si.status === 'saving') return `<span style="color:#aaa;font-size:10px;">⏳ guardando…</span>`;
@@ -1166,7 +1193,7 @@ function clienteCardHtml(p, i, showPrecio, allowNameEdit) {
         <button class="btn-out" onclick="abrirEditar(${i})">✏️ Editar</button>
         <span id="sync-${i}" style="position:absolute;bottom:8px;right:12px;display:flex;align-items:center;gap:3px;">${_syncHtml}</span>
        </div><div id="wa-${i}"></div>`
-    : `<div class="c-footer" style="position:relative;"><button class="btn-out" onclick="abrirEditar(${i})">✏️ Editar pedido</button><span id="dsync-${i}" style="position:absolute;bottom:8px;right:12px;display:flex;align-items:center;gap:3px;">${_syncHtml}</span></div>`;
+    : `<div class="c-footer" style="position:relative;"><button class="btn-out" onclick="abrirEditar(${i})">✏️ Editar pedido</button>${hayVideoPendiente ? `<button class="btn-out" style="background:#f0d8e0;color:#7a2a3a;border-color:#e8b4c0;" onclick="window.marcarSinVideo('${p.bebe.replace(/'/g,"\\'")}','${p.mama.replace(/'/g,"\\'")}')">Sin video</button>` : ''}<span id="dsync-${i}" style="position:absolute;bottom:8px;right:12px;display:flex;align-items:center;gap:3px;">${_syncHtml}</span></div>`;
 
   return `<div class="c-card" id="ccard-${i}"
       ondragover="onDragOverCliente(event,${i})"
@@ -1175,7 +1202,7 @@ function clienteCardHtml(p, i, showPrecio, allowNameEdit) {
     <div class="c-header">
       <span class="drag-handle" draggable="true" ondragstart="onDragStartCliente(event,${i})">⠿</span>
       <div style="flex:1;min-width:0;">
-        <div><span class="c-nombre">${p.bebe}</span><span class="c-mama">${p.mama}</span></div>
+        <div><span class="c-nombre">${p.bebe}</span><span class="c-mama">${p.mama}</span>${hayVideoPendiente ? `<span style="background:#e8b4c0;color:#7a2a3a;font-size:9px;font-weight:600;padding:2px 7px;border-radius:10px;letter-spacing:0.5px;margin-left:6px;">video pendiente</span>` : ''}</div>
         ${p.notas?`<div class="c-meta">📌 ${p.notas}</div>`:''}
       </div>
       <div class="c-right">
@@ -1219,6 +1246,16 @@ function renderPedidos() {
   el.innerHTML = html;
 }
 
+// ── HELPER VIDEO PENDIENTE ──
+function videoPendiente(p) {
+  const sesiones = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : [];
+  const s = sesiones.find(s =>
+    s.bebe && s.bebe.toLowerCase() === (p.bebe||'').toLowerCase() &&
+    s.mama && s.mama.toLowerCase() === (p.mama||'').toLowerCase()
+  );
+  return s ? (s.tareaVideoPendiente === true && s.tareaVideoHecha !== true && s.videoSinGrabar !== true) : false;
+}
+
 // ── RENDER DISEÑO ──
 function renderDiseno() {
   // Bandeja 1: Sin respuesta del cliente
@@ -1241,7 +1278,7 @@ function renderDiseno() {
   const gruposEnt = {};
   pedidos.forEach((p) => {
     const activos = p.prods.filter(x => x.estado !== 'Entregado');
-    if (activos.length > 0 && activos.every(x => x.estado === 'Listo en estudio')) {
+    if (activos.length > 0 && activos.every(x => x.estado === 'Listo en estudio') && !videoPendiente(p)) {
       const key = `${p.bebe} · ${p.mama}`;
       gruposEnt[key] = { tieneSaldo: p.pago === 'Saldo pendiente' };
     }
