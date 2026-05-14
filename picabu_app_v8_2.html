@@ -1207,7 +1207,7 @@ function clienteCardHtml(p, i, showPrecio, allowNameEdit) {
         <button class="btn-out" onclick="abrirEditar(${i})">✏️ Editar</button>
         <span id="sync-${i}" style="position:absolute;bottom:8px;right:12px;display:flex;align-items:center;gap:3px;">${_syncHtml}</span>
        </div><div id="wa-${i}"></div>`
-    : `<div class="c-footer" style="position:relative;"><button class="btn-out" onclick="abrirEditar(${i})">✏️ Editar pedido</button>${todoListo && !videoHecho ? `<button class="btn-out" style="${!videoSinGrabar ? 'background:#e8d4f5;color:#5a2a7a;border-color:#d4b3e8;' : ''}" ${!videoSinGrabar ? 'disabled' : `onclick="window.deshacerSinVideo('${p.bebe.replace(/'/g,"\\'")}','${p.mama.replace(/'/g,"\\'")}')"`}>🎬 Video pendiente</button><button class="btn-out" style="${videoSinGrabar ? 'background:#f0ebe5;color:#888;border-color:#ddd;' : ''}" ${videoSinGrabar ? 'disabled' : `onclick="window.marcarSinVideo('${p.bebe.replace(/'/g,"\\'")}','${p.mama.replace(/'/g,"\\'")}')"`}>— Sin video</button>` : ''}<span id="dsync-${i}" style="position:absolute;bottom:8px;right:12px;display:flex;align-items:center;gap:3px;">${_syncHtml}</span></div>`;
+    : `<div class="c-footer" style="position:relative;"><button class="btn-out" onclick="abrirEditar(${i})">✏️ Editar pedido</button>${todoListo && !videoHecho ? `<button class="btn-out" style="${!videoSinGrabar ? 'background:#f0e4df;color:var(--marron-d);border-color:var(--rosa-d);font-weight:600;' : 'opacity:0.5;'}" ${!videoSinGrabar ? 'disabled' : `onclick="window.deshacerSinVideo('${p.bebe.replace(/'/g,"\\'")}','${p.mama.replace(/'/g,"\\'")}')"`}>Video pendiente</button><button class="btn-out" style="${videoSinGrabar ? 'background:#f0e4df;color:var(--marron-d);border-color:var(--rosa-d);font-weight:600;' : 'opacity:0.5;'}" ${videoSinGrabar ? 'disabled' : `onclick="window.marcarSinVideo('${p.bebe.replace(/'/g,"\\'")}','${p.mama.replace(/'/g,"\\'")}')"`}>Sin video</button>` : ''}<span id="dsync-${i}" style="position:absolute;bottom:8px;right:12px;display:flex;align-items:center;gap:3px;">${_syncHtml}</span></div>`;
 
   return `<div class="c-card" id="ccard-${i}"
       ondragover="onDragOverCliente(event,${i})"
@@ -1216,7 +1216,7 @@ function clienteCardHtml(p, i, showPrecio, allowNameEdit) {
     <div class="c-header">
       <span class="drag-handle" draggable="true" ondragstart="onDragStartCliente(event,${i})">⠿</span>
       <div style="flex:1;min-width:0;">
-        <div><span class="c-nombre">${p.bebe}</span><span class="c-mama">${p.mama}</span>${videoHecho ? `<span style="background:#d4f0e0;color:#2a6a47;font-size:9px;font-weight:600;padding:2px 7px;border-radius:10px;letter-spacing:0.5px;margin-left:6px;">✓ video hecho</span>` : hayVideoPendiente && !videoSinGrabar ? `<span style="background:#e8d4f5;color:#5a2a7a;font-size:9px;font-weight:600;padding:2px 7px;border-radius:10px;letter-spacing:0.5px;margin-left:6px;">🎬 video pendiente</span>` : ''}</div>
+        <div><span class="c-nombre">${p.bebe}</span><span class="c-mama">${p.mama}</span>${videoHecho ? `<span style="background:#ddeee5;color:#3a6a50;font-size:9px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:0.5px;margin-left:6px;">video listo</span>` : hayVideoPendiente && !videoSinGrabar ? `<span style="background:#f0e4df;color:var(--marron-d);font-size:9px;font-weight:500;padding:2px 8px;border-radius:10px;letter-spacing:0.5px;margin-left:6px;">video pendiente</span>` : ''}</div>
         ${p.notas?`<div class="c-meta">📌 ${p.notas}</div>`:''}
       </div>
       <div class="c-right">
