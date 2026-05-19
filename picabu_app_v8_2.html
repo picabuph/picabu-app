@@ -148,7 +148,9 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .detail-btn:hover { color:var(--text); }
 .ficha-btn { width:24px; height:24px; border-radius:6px; background:var(--arena-l); border:1px solid var(--arena); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--muted); font-size:13px; transition:background 0.15s; padding:0; line-height:1; }
 .ficha-btn:hover { background:var(--arena); color:var(--marron-d); }
-.nped-tag { min-width:28px; height:20px; border-radius:5px; background:var(--arena-l); border:1px solid var(--arena); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:10px; color:var(--muted); font-weight:500; padding:0 5px; font-family:'Montserrat',sans-serif; white-space:nowrap; letter-spacing:0.5px; }
+.ficha-btn.ficha-btn-ok { background:#d4c8bf; border-color:#c4b8af; color:var(--marron-d); }
+.ficha-btn.ficha-btn-ok:hover { background:#c4b8af; }
+.nped-tag { width:52px; height:20px; border-radius:5px; background:var(--arena-l); border:1px solid var(--arena); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:10px; color:var(--muted); font-weight:500; padding:0; font-family:'Montserrat',sans-serif; white-space:nowrap; letter-spacing:0.5px; box-sizing:border-box; }
 .nped-tag.filled { background:#d4c8bf; color:var(--marron-d); border-color:#c4b8af; font-weight:600; }
 .nped-inp { min-width:28px; width:60px; height:20px; border-radius:5px; border:1px solid var(--rosa); background:var(--white); font-size:10px; font-family:'Montserrat',sans-serif; color:var(--marron-d); padding:0 5px; outline:none; text-align:center; }
 
@@ -1136,8 +1138,9 @@ function prodRowHtml(ci, x, pi, showPrecio, allowNameEdit, prefijo, pedido) {
     : '';
 
   // Ícono ficha (solo en Diseño) — izquierda
+  const fichaTiene = allowNameEdit && !!x.proveedor;
   const fichaBtn = allowNameEdit
-    ? `<button class="ficha-btn" onclick="event.stopPropagation();abrirPModal(${ci},${pi})" title="Ver ficha del producto"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.3" fill="none"/><line x1="3.5" y1="4.5" x2="10.5" y2="4.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><line x1="3.5" y1="7" x2="10.5" y2="7" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><line x1="3.5" y1="9.5" x2="7.5" y2="9.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg></button>`
+    ? `<button class="ficha-btn${fichaTiene ? ' ficha-btn-ok' : ''}" onclick="event.stopPropagation();abrirPModal(${ci},${pi})" title="${fichaTiene ? 'Proveedor: '+x.proveedor : 'Sin proveedor asignado'}"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.3" fill="none"/><line x1="3.5" y1="4.5" x2="10.5" y2="4.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><line x1="3.5" y1="7" x2="10.5" y2="7" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><line x1="3.5" y1="9.5" x2="7.5" y2="9.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg></button>`
     : '';
 
   // Tag número de pedido (solo en Diseño) — derecha
