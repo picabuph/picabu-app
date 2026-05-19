@@ -836,7 +836,8 @@ function load() {
         cantTotal: x.cantTotal,
         uid: x.uid || ('u'+Date.now()+Math.random().toString(36).substr(2,6)),
         soloWA: x.soloWA || (x.codigo === 'FOTOS-EXTRA') || false,
-        fotosDetalle: x.fotosDetalle || null
+        fotosDetalle: x.fotosDetalle || null,
+        numPedido: x.numPedido || ''
       }));
     });
   } catch(e) { pedidos = []; }
@@ -1081,6 +1082,10 @@ document.addEventListener('click', e => {
 });
 
 // ── PROD ROW HTML ──
+function esPlantilla(nombre) {
+  return /^\d+\s*plantillas?\s*(de\s*)?datos/i.test(nombre || '');
+}
+
 // Traduce nombre de fotolibro sumando páginas de plantillas de datos (solo para vista Diseño)
 function nombreDiseno(pedido, x) {
   const m = (x.nombre||'').match(/^(.*\()(\d+)(H\).*)$/i);
@@ -1120,7 +1125,7 @@ function prodRowHtml(ci, x, pi, showPrecio, allowNameEdit, prefijo, pedido) {
   const esTraducido = nombreMostrar !== (x.nombre||'');
   const nombreHtml = allowNameEdit
     ? (esTraducido
-        ? `<div class="prod-nombre-edit" style="cursor:default;" title="Calculado automáticamente: ${(x.nombre||'').replace(/"/g,'&quot;')} + plantillas">${nombreMostrar}</div>`
+        ? `<div class="prod-nombre-edit" style="cursor:default;" title="Calculado automáticamente: ${(x.nombre||'').replace(/"/g,'&quot;')} + plantillas">${nombreMostrar}<span style="font-style:italic;color:var(--muted);font-size:10px;margin-left:7px;font-weight:400;">plantilla de datos</span></div>`
         : `<input class="prod-nombre-edit" value="${nombreStr}" onblur="guardarNombreProd(${ci},${pi},this.value)" onclick="event.stopPropagation()">`)
     : `<div class="prod-nombre">${x.nombre||''}</div>`;
 
@@ -1197,6 +1202,7 @@ function clienteCardHtml(p, i, showPrecio, allowNameEdit) {
   const prodsVisibles = p.prods.filter(x => {
     if (x.soloWA && allowNameEdit) return false; // ocultar en Diseño
     if (x.soloWA) return true; // mostrar en Pedidos
+    if (allowNameEdit && esPlantilla(x.nombre)) return false; // plantillas se consolidan en el fotolibro
     if (x.cantIdx !== undefined) return x.cantIdx === 0;
     if (vistos.has(x.nombre)) return false;
     vistos.add(x.nombre); return true;
@@ -1579,10 +1585,10 @@ function renderEnvio() {
   const el=document.getElementById('lista-envio');
   const grupos={};
   pedidos.forEach(p=>p.prods.forEach(x=>{
-    if(x.estado==='En producción'){
+    if(x.estado==='En producción' && !esPlantilla(x.nombre)){
       const prov=x.proveedor||'Sin proveedor asignado';
       if(!grupos[prov]) grupos[prov]=[];
-      grupos[prov].push({prod:x.nombre,cliente:p.bebe,mama:p.mama,nped:x.numPedido||''});
+      grupos[prov].push({prod:nombreDiseno(p,x),cliente:p.bebe,mama:p.mama,nped:x.numPedido||''});
     }
   }));
   if(!Object.keys(grupos).length){el.innerHTML='<div class="empty">No hay productos en producción.</div>';return;}
