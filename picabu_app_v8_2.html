@@ -647,6 +647,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
   </div></div>
   </div>
   <div class="page" id="tab-diseno">
+    <div id="filtro-prov-wrap"></div>
     <div class="alertas-wrap">
       <div id="alertas-seguimiento"></div>
       <div id="alertas-entrega"></div>
@@ -1197,7 +1198,7 @@ function editarNumPedido(ci, pi, el) {
 }
 
 // ── CARD CLIENTE HTML ──
-function clienteCardHtml(p, i, showPrecio, allowNameEdit) {
+function clienteCardHtml(p, i, showPrecio, allowNameEdit, soloProveedor) {
   const total = p.prods.reduce((s,x)=>s+Number(x.precio||0),0);
   const pagoClass = p.pago==='Pagado'?'pago-pagado':p.pago==='Saldo pendiente'?'pago-saldo':'pago-vacio';
   const prefijo = allowNameEdit ? 'depop' : 'epop';
@@ -1206,6 +1207,7 @@ function clienteCardHtml(p, i, showPrecio, allowNameEdit) {
     if (x.soloWA && allowNameEdit) return false; // ocultar en Diseño
     if (x.soloWA) return true; // mostrar en Pedidos
     if (allowNameEdit && esPlantilla(x.nombre)) return false; // plantillas se consolidan en el fotolibro
+    if (soloProveedor && x.proveedor !== soloProveedor) return false; // filtro por proveedor
     if (x.cantIdx !== undefined) return x.cantIdx === 0;
     if (vistos.has(x.nombre)) return false;
     vistos.add(x.nombre); return true;
@@ -1298,6 +1300,33 @@ function videoPendiente(p) {
 }
 
 // ── RENDER DISEÑO ──
+let filtroProveedor = null;
+
+function toggleFiltroProveedor(prov) {
+  filtroProveedor = (filtroProveedor === prov) ? null : prov;
+  renderDiseno();
+}
+
+function renderFiltroProveedor() {
+  const wrap = document.getElementById('filtro-prov-wrap');
+  if (!wrap) return;
+  // Recopilar proveedores únicos con productos activos en diseño
+  const provs = new Set();
+  pedidos.filter(p => !todosEntregados(p)).forEach(p =>
+    p.prods.forEach(x => { if (x.proveedor && !esPlantilla(x.nombre)) provs.add(x.proveedor); })
+  );
+  if (provs.size === 0) { wrap.innerHTML = ''; return; }
+  const chips = [...provs].map(prov => {
+    const activo = filtroProveedor === prov;
+    return `<button onclick="toggleFiltroProveedor('${prov.replace(/'/g,"\\'")}')"
+      style="padding:5px 14px;border-radius:20px;border:1px solid ${activo?'var(--marron-d)':'var(--border)'};
+      background:${activo?'var(--marron-d)':'var(--white)'};color:${activo?'var(--rosa-l)':'var(--muted)'};
+      font-size:10px;font-family:'Montserrat',sans-serif;letter-spacing:0.5px;cursor:pointer;white-space:nowrap;
+      font-weight:${activo?'600':'400'};transition:all 0.15s;">${prov}</button>`;
+  }).join('');
+  wrap.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;padding:0 0 14px 0;">${chips}</div>`;
+}
+
 function renderDiseno() {
   // Bandeja 1: Sin respuesta del cliente
   const dias = getDias();
@@ -1394,13 +1423,18 @@ function renderDiseno() {
     entEl.innerHTML = '';
   }
 
+  renderFiltroProveedor();
+
   const el = document.getElementById('lista-diseno');
   if (!pedidos.length) { el.innerHTML='<div class="empty">No hay pedidos.</div>'; return; }
-  const activos = pedidos.filter(p=>!todosEntregados(p));
+  let activos = pedidos.filter(p=>!todosEntregados(p));
   const entregados = pedidos.filter(p=>todosEntregados(p));
+  if (filtroProveedor) {
+    activos = activos.filter(p => p.prods.some(x => x.proveedor === filtroProveedor && !esPlantilla(x.nombre)));
+  }
   let html = activos.length
-    ? activos.map(p=>clienteCardHtml(p, pedidos.indexOf(p), false, true)).join('')
-    : '<div class="empty">No hay pedidos activos.</div>';
+    ? activos.map(p=>clienteCardHtml(p, pedidos.indexOf(p), false, true, filtroProveedor||null)).join('')
+    : `<div class="empty">No hay pedidos con productos de ${filtroProveedor}.</div>`;
   if (entregados.length) {
     html += `<div style="margin-top:28px;">
       <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">
