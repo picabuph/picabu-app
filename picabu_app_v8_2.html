@@ -32,6 +32,12 @@
     }
     if (d && d.contactados !== undefined) {
       if (typeof window.setContactadosFromFirebase === 'function') window.setContactadosFromFirebase(d.contactados);
+    } else {
+      // Firebase no tiene contactados aún → migrar lo que haya en localStorage
+      const local = (() => { try { return JSON.parse(localStorage.getItem('picabu_contactados') || '{}'); } catch(e) { return {}; } })();
+      if (Object.keys(local).length > 0) {
+        setDoc(REF, { contactados: local }, { merge: true }).catch(e => console.warn('Firebase contactados migrate:', e));
+      }
     }
   } });
   window.saveToFirebase = async function(data) {
