@@ -24,11 +24,11 @@
     // Asignar uid a productos que no tienen uno
     let necesitaGuardar = false;
     lista.forEach(p => { if (p.prods) p.prods.forEach(x => { if (!x.uid) { x.uid = 'u'+Date.now()+Math.random().toString(36).substr(2,6); necesitaGuardar = true; } }); });
-    window.pedidos = lista;
-    localStorage.setItem("picabu_v8", JSON.stringify(lista));
+    if (typeof window.setPedidosFromFirebase === 'function') window.setPedidosFromFirebase(lista);
+    else { window.pedidos = lista; localStorage.setItem("picabu_v8", JSON.stringify(lista)); }
     if (necesitaGuardar && typeof window.saveToFirebase === 'function') window.saveToFirebase(lista);
-    const tab = document.querySelector(".tab.active")?.textContent.trim(); 
-    if (typeof renderDiseno === "function" && tab === "Diseño") renderDiseno(); else if (typeof renderPedidos === "function") renderPedidos(); 
+    const tab = document.querySelector(".tab.active")?.textContent.trim();
+    if (typeof renderDiseno === "function" && tab === "Diseño") renderDiseno(); else if (typeof renderPedidos === "function") renderPedidos();
   } } });
   window.saveToFirebase = async function(data) { try { const clean = JSON.parse(JSON.stringify(data, (k,v) => v === undefined ? null : v)); await setDoc(REF, { lista: clean, updated: new Date().toISOString() }); } catch(e) { console.warn("Firebase:", e); throw e; } };
 
@@ -38,10 +38,15 @@
   onSnapshot(EQUIPO_REF, (snap) => {
     if (snap.exists() && snap.data()?.lista) {
       _equipoSesiones = snap.data().lista;
+      if (typeof window.setEquipoSesionesLocal === 'function') window.setEquipoSesionesLocal(_equipoSesiones);
       if (typeof window.renderDiseno === "function") window.renderDiseno();
     }
   });
   window._getEquipoSesiones = function() { return _equipoSesiones; };
+  window.saveEquipoSesiones = async function(lista) {
+    try { await setDoc(EQUIPO_REF, { lista, updated: new Date().toISOString() }); }
+    catch(e) { console.warn("Firebase saveEquipoSesiones:", e); throw e; }
+  };
   window.marcarSinVideo = async function(bebe, mama) {
     const lista = _equipoSesiones.map(s => {
       if (s.mama && s.mama.toLowerCase() === (mama||'').toLowerCase() &&
@@ -308,6 +313,46 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
   .container { padding:12px 8px; }
 }
 
+/* ── SESIONES EQUIPO (réplica) ── */
+.eq-btn-accion { padding:5px 12px; border-radius:7px; font-size:10px; letter-spacing:1px; text-transform:uppercase; cursor:pointer; font-family:'Montserrat',sans-serif; font-weight:500; border:1px solid var(--border); background:none; color:var(--marron); }
+.eq-btn-accion:hover { background:var(--arena-l); }
+.eq-btn-accion-pri { background:var(--marron-d); color:var(--rosa-l); border-color:var(--marron-d); }
+.eq-btn-accion-video { background:#e8d4f5; color:#5a2a7a; border-color:#d4b3e8; }
+.eq-btn-accion-video-off { background:none; color:var(--muted); border-color:var(--border); }
+.eq-btn-accion-video-done { background:#d4f0e0; color:#2a6a47; border-color:#a8dbbf; }
+.eq-btn-accion-del { background:none; border:1px solid #c97b7b; color:#c97b7b; }
+.eq-btn-accion-del:hover { background:#fde8e8; }
+.eq-badge-paquete { font-size:9px; letter-spacing:1px; text-transform:uppercase; background:var(--rosa-l); color:var(--marron-d); border-radius:6px; padding:2px 7px; font-weight:600; }
+.eq-badge-prod { font-size:9px; background:#fff3cd; color:#856404; border-radius:6px; padding:2px 7px; font-weight:500; }
+.eq-badge-video { font-size:9px; background:#e8d4f5; color:#5a2a7a; border-radius:6px; padding:2px 7px; font-weight:500; }
+.eq-badges { display:flex; gap:5px; flex-wrap:wrap; margin-top:4px; }
+.eq-bebe-row { display:flex; align-items:baseline; gap:5px; min-width:0; }
+.eq-mama-inline { font-size:11px; color:var(--muted); font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; flex:1; }
+.eq-info-row { display:flex; gap:12px; flex-wrap:wrap; padding:8px 14px; border-top:1px solid var(--arena-l); }
+.eq-info-item { display:flex; flex-direction:column; gap:2px; }
+.eq-info-label { font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--muted); font-weight:600; }
+.eq-info-val { font-size:13px; color:var(--text); font-weight:500; }
+.eq-notas { font-size:12px; color:var(--text); background:var(--arena-l); border-radius:8px; padding:7px 12px; margin:0 14px 8px; line-height:1.5; }
+.eq-notas-label { font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--muted); font-weight:600; margin-bottom:3px; }
+.eq-fecha-barra { height:3px; background:var(--arena-l); border-radius:2px; margin-top:4px; width:100px; }
+.eq-fecha-barra-fill { height:100%; border-radius:2px; }
+.eq-alerta-sin-resp { background:#fde8e8; border:1px solid #f0b8b8; border-radius:10px; padding:10px 14px; margin-bottom:14px; font-size:12px; color:#7a3a3a; }
+.eq-alerta-sin-resp strong { font-weight:600; }
+.eq-alerta-60 { margin:6px 14px 4px; background:#fff3e8; border:1px solid #f0d8b0; border-radius:8px; padding:7px 12px; font-size:11px; color:#7a4a00; }
+.eq-seccion-sep { border:none; border-top:1px solid var(--border); margin:20px 0 16px; }
+.eq-seccion-header { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+.eq-seccion-titulo { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); font-weight:600; }
+.eq-count-badge { background:var(--crema); color:var(--marron-d); border-radius:10px; padding:1px 8px; font-size:10px; font-weight:600; }
+.eq-vista { opacity:0.6; }
+.eq-modal-overlay { display:none; position:fixed; inset:0; background:rgba(58,46,42,0.4); z-index:500; align-items:center; justify-content:center; }
+.eq-modal-overlay.open { display:flex; }
+.eq-mbox { background:var(--white); border-radius:16px; padding:24px; width:100%; max-width:400px; margin:16px; }
+.eq-mbox-title { font-family:'Yeseva One',serif; font-size:18px; color:var(--marron-d); margin-bottom:4px; }
+.eq-mbox-sub { font-size:12px; color:var(--muted); margin-bottom:16px; }
+.eq-fl { margin-bottom:12px; }
+.eq-fl label { font-size:11px; color:var(--muted); display:block; margin-bottom:4px; }
+.eq-fl input { width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; font-family:'Montserrat',sans-serif; background:var(--bg); color:var(--text); outline:none; }
+
 </style>
 </head>
 <body>
@@ -333,6 +378,8 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
   <div class="tab" draggable="true" data-tab="excel" onclick="showTab('excel')">Excel</div>
   <div class="tab" draggable="true" data-tab="precios" onclick="showTab('precios')">Precios</div>
   <div class="tab" draggable="true" data-tab="config" onclick="showTab('config')">Config</div>
+  <div class="tab" draggable="true" data-tab="sesiones" onclick="showTab('sesiones')">Sesiones</div>
+  <div class="tab" draggable="true" data-tab="carga" onclick="showTab('carga')">+ Carga</div>
 </div>
 
 <div class="container">
@@ -720,6 +767,65 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
       <button class="btn-save-e" onclick="guardarEstados()">Guardar estados</button>
     </div>
   </div>
+
+  <!-- PESTAÑA SESIONES EQUIPO (réplica) -->
+  <div class="page" id="tab-sesiones">
+  <div id="eq-alerta-sin-resp-wrap"></div>
+  <div id="lista-sesiones-angie"></div>
+  </div>
+
+  <!-- PESTAÑA CARGA DE SESIONES (réplica) -->
+  <div class="page" id="tab-carga">
+  <div style="background:var(--white);border:1px solid var(--border);border-radius:14px;padding:20px 22px;margin-bottom:18px;">
+    <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:16px;">Carga de sesiones</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" onkeydown="if(event.key==='Enter'&&event.target.tagName!=='SELECT')guardarSesionAngie()">
+      <div class="eq-fl" style="grid-column:1/3"><label>Nombre del bebé / tipo de sesión</label>
+        <input id="seq-bebe" type="text" placeholder="Ej: Valentina NB" autocomplete="off"></div>
+      <div class="eq-fl"><label>Nombre de la mamá</label>
+        <input id="seq-mama" type="text" placeholder="Ej: Laura García" autocomplete="off"></div>
+      <div class="eq-fl"><label>Fecha de sesión</label>
+        <input id="seq-fecha" type="date"></div>
+      <div class="eq-fl"><label>Paquete</label>
+        <select id="seq-paquete" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);outline:none;">
+          <option value="">— sin especificar —</option>
+          <option value="petite">Petite (10 fotos)</option>
+          <option value="premium">Premium (20 fotos)</option>
+          <option value="gold">Gold (30 fotos)</option>
+          <option value="petite familiar">Petite Familiar (15 fotos)</option>
+          <option value="premium familia">Premium Familia (25 fotos)</option>
+          <option value="petite lifestyle">Petite Lifestyle (25 fotos)</option>
+          <option value="premium lifestyle">Premium Lifestyle (50 fotos)</option>
+          <option value="video backstage">Video de backstage</option>
+        </select></div>
+      <div class="eq-fl"><label>Notas (opcional)</label>
+        <input id="seq-notas" type="text" placeholder="Ej: cliente VIP, doble sesión..."></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:4px;justify-content:flex-end;align-items:center;">
+      <span id="seq-ok" style="font-size:11px;color:#7aaa8a;display:none;">✓ Guardado</span>
+      <button onclick="guardarSesionAngie()" style="padding:10px 24px;background:var(--marron-d);color:var(--rosa-l);border:none;border-radius:9px;cursor:pointer;font-size:10px;letter-spacing:2px;text-transform:uppercase;font-family:'Montserrat',sans-serif;">Guardar y cargar otro</button>
+    </div>
+  </div>
+  <div id="eq-lote-lista"></div>
+  </div>
+
+</div>
+
+<!-- MODAL CONFIRMAR FOTOS EQUIPO -->
+<div class="eq-modal-overlay" id="eq-modal-cf">
+  <div class="eq-mbox">
+    <div class="eq-mbox-title">Confirmar selección</div>
+    <div class="eq-mbox-sub" id="eq-cf-sub">Fecha en que el cliente eligió las fotos</div>
+    <div class="eq-fl"><label>Fecha de confirmación</label>
+      <input id="eq-cf-fecha" type="date" oninput="eqAutoLimite()"></div>
+    <div class="eq-fl"><label>Fecha límite edición (30 días)</label>
+      <input id="eq-cf-limite" type="date"></div>
+    <div class="eq-fl"><label>Cantidad de fotos a editar</label>
+      <input id="eq-cf-cant" type="number" placeholder="Ej: 20" min="1"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+      <button onclick="cerrarEqModalCF()" style="padding:8px 18px;background:none;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;font-family:'Montserrat',sans-serif;color:var(--muted);">Cancelar</button>
+      <button onclick="confirmarFotosEq()" style="padding:8px 18px;background:var(--marron-d);color:var(--rosa-l);border:none;border-radius:8px;cursor:pointer;font-size:12px;font-family:'Montserrat',sans-serif;">Confirmar</button>
+    </div>
+  </div>
 </div>
 
 <!-- MODAL PRODUCTO -->
@@ -817,6 +923,12 @@ function getEstadoColor(n) { const e=getEstados().find(x=>x.nombre===n); return 
 
 // ── DATOS ──
 let pedidos = [];
+// Permite que el módulo Firebase actualice la variable local al recibir un snapshot
+window.setPedidosFromFirebase = function(lista) {
+  pedidos = lista;
+  localStorage.setItem('picabu_v8', JSON.stringify(lista));
+  localStorage.setItem('picabu_v7', JSON.stringify(lista));
+};
 let pmEdit = null;
 let editCI = null;
 let dragCI = null, dragPCI = null, dragPPI = null;
@@ -1932,6 +2044,8 @@ function showTab(name){
   if(name==='excel') renderExcel();
   if(name==='precios'){ renderDBConfig(); renderTarifasFotos(); }
   if(name==='config') renderEstadosConfig();
+  if(name==='sesiones') renderSesionesAngie();
+  if(name==='carga') renderEqLoteLista();
 }
 
 // ── DRAG & DROP DE PESTAÑAS ──
@@ -2185,6 +2299,248 @@ function editarProdDB(i){
   arr[i]={...p,n:n.trim(),p:Number(pr)};
   saveDBUser(arr); renderDBConfig();
 }
+
+// ── SESIONES EQUIPO — réplica completa ───────────────────────────
+const EQ_CONFIG_KEY = 'equipo_config';
+const EQ_CONFIG_DEFAULT = { diasAlertaSinRespuesta:15, diasLimiteEdicion:30, diasLimiteVideo:60, diasEstimadoGaleria:7,
+  paquetes:{'petite familiar':15,'premium familia':25,'petite lifestyle':25,'premium lifestyle':50,'petite':10,'premium':20,'gold':30},
+  estadosCustom:[], estadosBuiltinOverrides:{} };
+function eq_getConfig() {
+  try { return Object.assign({}, EQ_CONFIG_DEFAULT, JSON.parse(localStorage.getItem(EQ_CONFIG_KEY)||'{}')); }
+  catch(e) { return Object.assign({}, EQ_CONFIG_DEFAULT); }
+}
+const EQ_BG_DEFAULT = { galeria_pendiente:'#e8dad2', pendiente_cliente:'#b3c6e0', edicion_renu:'#d4b3d7', edicion_terminada:'#c4a0c7', para_subir:'#f0c84a', subidas:'#d4edda' };
+const EQ_LABEL_DEFAULT = { galeria_pendiente:'Galería pendiente', pendiente_cliente:'Pendiente cliente', edicion_renu:'Edición', edicion_terminada:'Edición terminada', para_subir:'Para subir', subidas:'Subidas ✓' };
+function eq_getEstados() {
+  const cfg = eq_getConfig(); const ov = cfg.estadosBuiltinOverrides||{};
+  const builtin = Object.keys(EQ_BG_DEFAULT).map(id => ({ id, label:(ov[id]&&ov[id].label)||EQ_LABEL_DEFAULT[id], bg:(ov[id]&&ov[id].bg)||EQ_BG_DEFAULT[id] }));
+  const custom = (cfg.estadosCustom||[]).map(s=>({ id:s.id, label:s.label, bg:s.bg||'#e8e0d4' }));
+  return [...builtin, ...custom];
+}
+function eq_getEstadoInfo(id) { return eq_getEstados().find(s=>s.id===id)||{id, label:id, bg:'#e8dad2'}; }
+function eq_hoy() { return new Date().toISOString().split('T')[0]; }
+function eq_fmt(f) { if (!f) return '—'; const [y,m,d]=f.split('-'); return `${d}/${m}/${y}`; }
+function eq_calcLimite(fecha,dias=30) { const d=new Date(fecha); d.setDate(d.getDate()+dias); return d.toISOString().split('T')[0]; }
+function eq_diasDesde(f) { if (!f) return 0; const d=new Date(f),h=new Date(); h.setHours(0,0,0,0);d.setHours(0,0,0,0); return Math.floor((h-d)/86400000); }
+function eq_diasHasta(f) { if (!f) return null; const d=new Date(f),h=new Date(); h.setHours(0,0,0,0);d.setHours(0,0,0,0); return Math.floor((d-h)/86400000); }
+function eq_fotosDelPaquete(paq) {
+  if (!paq) return null; const k=paq.toLowerCase().trim();
+  const paquetes=Object.assign({},EQ_CONFIG_DEFAULT.paquetes,eq_getConfig().paquetes);
+  for (const n of Object.keys(paquetes)) { if (k.includes(n)) return paquetes[n]; } return null;
+}
+
+let _eqSesiones = [];
+let _eqCFIdx = null;
+window.setEquipoSesionesLocal = function(lista) {
+  _eqSesiones = lista;
+  const tab = document.querySelector('.tab.active')?.dataset.tab;
+  if (tab==='sesiones') renderSesionesAngie();
+  if (tab==='carga') renderEqLoteLista();
+};
+
+function eq_save() {
+  if (typeof window.saveEquipoSesiones==='function') window.saveEquipoSesiones(_eqSesiones);
+}
+
+// ─ Dropdown de estado ─
+let _activeEqPop = null;
+function toggleEqPop(idx) {
+  const id=`eqpop-${idx}`;
+  if (_activeEqPop && _activeEqPop!==id) { const p=document.getElementById(_activeEqPop); if(p) p.classList.remove('open'); }
+  const pop=document.getElementById(id); if (!pop) return;
+  const opening=!pop.classList.contains('open');
+  if (opening) {
+    const btn=pop.previousElementSibling;
+    pop.style.position='fixed';
+    if (btn) { const r=btn.getBoundingClientRect(); const pH=244; const sB=window.innerHeight-r.bottom-8;
+      pop.style.top=(sB<pH?Math.max(4,r.top-pH-4):r.bottom+4)+'px'; pop.style.left=r.left+'px'; }
+    fillEqPopOpts(idx,'');
+  }
+  pop.classList.toggle('open',opening); _activeEqPop=opening?id:null;
+  if (opening) setTimeout(()=>pop.querySelector('.estado-pop-inp')?.focus(),50);
+}
+function fillEqPopOpts(idx,q) {
+  const cont=document.getElementById(`eqpop-opts-${idx}`); if (!cont) return;
+  cont.innerHTML=eq_getEstados().filter(s=>s.label.toLowerCase().includes((q||'').toLowerCase()))
+    .map(s=>`<div class="estado-opt" onmousedown="selEqEstado(${idx},'${s.id}')"><div class="estado-dot" style="background:${s.bg}"></div>${s.label}</div>`).join('');
+}
+function selEqEstado(idx, nuevoEstado) {
+  const pop=document.getElementById(`eqpop-${idx}`); if(pop) pop.classList.remove('open'); _activeEqPop=null;
+  const c=_eqSesiones[idx]; if (!c) return;
+  const anterior=c.estado;
+  // Cambiar a edicion_renu por primera vez → pedir confirmación de fotos
+  if (nuevoEstado==='edicion_renu' && !c.fechaConfirmacion) {
+    _eqCFIdx=idx; c._estadoPendiente=nuevoEstado;
+    document.getElementById('eq-cf-sub').textContent=`${c.bebe||''} · ${c.mama||''}`;
+    document.getElementById('eq-cf-fecha').value=eq_hoy();
+    document.getElementById('eq-cf-limite').value=eq_calcLimite(eq_hoy(),30);
+    document.getElementById('eq-cf-cant').value=eq_fotosDelPaquete(c.paquete)||'';
+    document.getElementById('eq-modal-cf').classList.add('open');
+    return;
+  }
+  c.estado=nuevoEstado;
+  if (nuevoEstado==='subidas') c.fechaSubida=eq_hoy();
+  eq_save(); renderSesionesAngie();
+}
+function eqAutoLimite() {
+  const v=document.getElementById('eq-cf-fecha').value;
+  if (v) document.getElementById('eq-cf-limite').value=eq_calcLimite(v,30);
+}
+function cerrarEqModalCF() { document.getElementById('eq-modal-cf').classList.remove('open'); _eqCFIdx=null; }
+function confirmarFotosEq() {
+  if (_eqCFIdx===null) return;
+  const c=_eqSesiones[_eqCFIdx];
+  const fecha=document.getElementById('eq-cf-fecha').value;
+  if (!fecha) { document.getElementById('eq-cf-fecha').focus(); return; }
+  c.estado=c._estadoPendiente||'edicion_renu'; delete c._estadoPendiente;
+  c.fechaConfirmacion=fecha;
+  c.fechaLimite=document.getElementById('eq-cf-limite').value||eq_calcLimite(fecha,30);
+  const cant=document.getElementById('eq-cf-cant').value;
+  if (cant) c.cantFotos=parseInt(cant);
+  cerrarEqModalCF(); eq_save(); renderSesionesAngie();
+}
+
+// ─ Acciones sobre sesiones ─
+function eq_marcarEnvioGaleria(idx) { _eqSesiones[idx].estado='pendiente_cliente'; _eqSesiones[idx].fechaEnvioGaleria=eq_hoy(); eq_save(); renderSesionesAngie(); }
+function eq_marcarVideo(idx) { _eqSesiones[idx].tareaVideoHecho=true; eq_save(); renderSesionesAngie(); }
+function eq_deshacerVideo(idx) { _eqSesiones[idx].tareaVideoHecho=false; _eqSesiones[idx].tareaVideoDisparada=false; eq_save(); renderSesionesAngie(); }
+function eq_marcarVista(idx) { _eqSesiones[idx].vista=!_eqSesiones[idx].vista; eq_save(); renderSesionesAngie(); }
+function eq_eliminarEntregada(idx) {
+  if (!confirm(`¿Eliminar a ${_eqSesiones[idx]?.bebe} de la lista?`)) return;
+  _eqSesiones.splice(idx,1); eq_save(); renderSesionesAngie();
+}
+
+// ─ Render de una card (idéntico a equipo app) ─
+function renderCardEq(c, idx, compacto) {
+  const cfg=eq_getConfig();
+  const fotosBase=eq_fotosDelPaquete(c.paquete);
+  const fotosExtras=(c.cantFotos&&fotosBase&&c.cantFotos>fotosBase)?c.cantFotos-fotosBase:0;
+  let info='';
+  if (!compacto) {
+    let fE=c.fechaLimite||(c.fechaSesion?eq_calcLimite(c.fechaSesion,30):null);
+    if (fE) {
+      const dE=eq_diasHasta(fE);
+      const bc=dE<0?'#c94040':dE<=5?'#e05050':dE<=10?'#e0a030':'#5cad80';
+      const bw=c.fechaLimite?Math.max(0,Math.min(100,100-(dE/cfg.diasLimiteEdicion*100))):null;
+      const dTxt=dE<0?`<span style="font-size:11px;color:#c94040;margin-left:5px">(${Math.abs(dE)} días)</span>`:dE===0?`<span style="font-size:11px;color:#e05050;margin-left:5px">(¡Hoy!)</span>`:`<span style="font-size:11px;color:${bc};margin-left:5px">(${dE} días)</span>`;
+      info+=`<div class="eq-info-item"><span class="eq-info-label" style="color:${dE<=5?'#c94040':''}">Entrega</span><span class="eq-info-val" style="color:${bc};font-weight:700;">${eq_fmt(fE)}${dTxt}</span>${bw!==null?`<div class="eq-fecha-barra"><div class="eq-fecha-barra-fill" style="width:${bw}%;background:${bc}"></div></div>`:''}</div>`;
+    }
+  }
+  if (['galeria_pendiente','pendiente_cliente'].includes(c.estado)) {
+    if (fotosBase) info+=`<div class="eq-info-item"><span class="eq-info-label">Fotos incluidas</span><span class="eq-info-val">${fotosBase} fotos</span></div>`;
+    if (c.estado==='galeria_pendiente'&&c.fechaSesion) {
+      const eF=eq_calcLimite(c.fechaSesion,cfg.diasEstimadoGaleria); const eD=eq_diasHasta(eF);
+      const eC=eD<0?'#c94040':eD<=2?'#e0a030':'#5cad80';
+      info+=`<div class="eq-info-item"><span class="eq-info-label">Entrega galería</span><span class="eq-info-val" style="color:${eC}">${eq_fmt(eF)}${eD<0?' <span style="font-size:10px">(atrasada)</span>':eD===0?' <span style="font-size:10px">(hoy)</span>':''}</span></div>`;
+    }
+  } else if (c.cantFotos) {
+    let fL=`${c.cantFotos} fotos`; if (fotosExtras>0) fL+=` (${fotosBase} + ${fotosExtras} extra)`;
+    info+=`<div class="eq-info-item"><span class="eq-info-label">Fotos a editar</span><span class="eq-info-val">${fL}</span></div>`;
+  }
+  let alerta60='';
+  if (c.fechaLimite60&&c.tareaVideoPendiente&&!c.tareaVideoHecho) {
+    const d60=eq_diasHasta(c.fechaLimite60); const col60=d60<=10?'#c94040':d60<=20?'#9a5000':'#7a3a00';
+    alerta60=`<div class="eq-alerta-60"><div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;font-weight:600;margin-bottom:2px;">🎬 Tope video (60 días)</div><span style="font-weight:600;color:${col60}">${eq_fmt(c.fechaLimite60)}</span><span style="font-size:11px;margin-left:5px">${d60>0?'('+d60+' días)':'(¡Hoy!)'}</span></div>`;
+  }
+  const e=eq_getEstadoInfo(c.estado);
+  const dropdown=`<div class="estado-wrap"><button class="estado-btn" style="background:${e.bg};" onclick="event.stopPropagation();toggleEqPop(${idx})"><span class="estado-btn-lbl">${e.label}</span><span class="estado-btn-chv"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="#5a4a42" stroke-width="1.5" fill="none"/></svg></span></button><div class="estado-pop" id="eqpop-${idx}"><input class="estado-pop-inp" placeholder="Buscar estado..." oninput="fillEqPopOpts(${idx},this.value)"><div class="estado-opts" id="eqpop-opts-${idx}"></div></div></div>`;
+  let acciones='';
+  if (!compacto) {
+    if (c.estado==='galeria_pendiente') acciones+=`<button class="eq-btn-accion eq-btn-accion-pri" onclick="eq_marcarEnvioGaleria(${idx})">Galería enviada</button>`;
+  } else {
+    acciones+=`<button class="eq-btn-accion" onclick="eq_marcarVista(${idx})">${c.vista?'✓ Vista':'Marcar vista'}</button>`;
+    acciones+=`<button class="eq-btn-accion eq-btn-accion-del" onclick="eq_eliminarEntregada(${idx})">Eliminar</button>`;
+  }
+  if (c.tareaVideoPendiente&&!c.sinVideo&&!c.videoSinGrabar) {
+    acciones+=` ${c.tareaVideoHecho?`<button class="eq-btn-accion eq-btn-accion-video-off" onclick="eq_deshacerVideo(${idx})">🎬 Video pendiente</button>`:` <button class="eq-btn-accion eq-btn-accion-video" style="cursor:default;opacity:0.7" disabled>🎬 Video pendiente</button>`}`;
+    acciones+=` ${c.tareaVideoHecho?`<button class="eq-btn-accion eq-btn-accion-video-done" style="cursor:default;opacity:0.7" disabled>✓ Video hecho</button>`:`<button class="eq-btn-accion eq-btn-accion-video-done" onclick="eq_marcarVideo(${idx})">✓ Video hecho</button>`}`;
+  }
+  if (c.sinVideo||c.videoSinGrabar) acciones+=` <span style="font-size:10px;color:var(--muted);letter-spacing:0.5px;">— Sin video</span>`;
+  return `<div class="c-card${compacto&&c.vista?' eq-vista':''}">
+    <div class="c-header">
+      <div class="c-nombres" style="flex:1;min-width:0;">
+        <div class="eq-bebe-row"><span class="c-nombre">${c.bebe||'—'}</span>${c.mama?`<span class="eq-mama-inline">${c.mama}</span>`:''}</div>
+        <div class="eq-badges">
+          ${c.paquete?`<span class="eq-badge-paquete">${c.paquete}</span>`:''}
+          ${c.tieneProductos?'<span class="eq-badge-prod">📦 Productos</span>':''}
+          ${c.tareaVideoPendiente&&!c.tareaVideoHecho&&!c.sinVideo&&!c.videoSinGrabar?'<span class="eq-badge-video">🎬 Video pendiente</span>':''}
+          ${c.tareaVideoPendiente&&c.tareaVideoHecho?'<span class="eq-badge-video" style="background:#d4f0e0;color:#2a6a47;">✓ Video hecho</span>':''}
+          ${c.sinVideo?'<span class="eq-badge-video" style="background:var(--arena-l);color:var(--muted);">— Sin video</span>':''}
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">${dropdown}</div>
+    </div>
+    ${info?`<div class="eq-info-row">${info}</div>`:''}
+    ${alerta60}
+    ${c.notas?`<div class="eq-notas"><div class="eq-notas-label">Notas</div>${c.notas}</div>`:''}
+    <div class="c-footer">${acciones}<span style="margin-left:auto;font-size:10px;color:#ccc;">☁ sincronizado</span></div>
+  </div>`;
+}
+
+// ─ Render pestaña Sesiones ─
+function renderSesionesAngie() {
+  const alertaEl=document.getElementById('eq-alerta-sin-resp-wrap');
+  const listaEl=document.getElementById('lista-sesiones-angie');
+  if (!listaEl) return;
+  const cfg=eq_getConfig();
+  const estaTerminado=c=>{
+    if (c.estado!=='subidas') return false;
+    if (c.tieneProductos&&!c.tareaVideoDisparada) return false;
+    if (c.tareaVideoPendiente&&!c.tareaVideoHecho&&!c.sinVideo&&!c.videoSinGrabar) return false;
+    return true;
+  };
+  const sorted=[..._eqSesiones].sort((a,b)=>{ if(!a.fechaSesion&&!b.fechaSesion)return 0; if(!a.fechaSesion)return 1; if(!b.fechaSesion)return -1; return a.fechaSesion.localeCompare(b.fechaSesion); });
+  const activas=sorted.filter(c=>!estaTerminado(c));
+  const terminadas=sorted.filter(c=>estaTerminado(c));
+  // Alerta sin respuesta
+  const alertas=_eqSesiones.filter(c=>c.estado==='pendiente_cliente'&&c.fechaEnvioGaleria&&eq_diasDesde(c.fechaEnvioGaleria)>=cfg.diasAlertaSinRespuesta);
+  if (alertaEl) {
+    alertaEl.innerHTML=alertas.length?`<div class="eq-alerta-sin-resp"><strong>⚠ Sin respuesta — más de ${cfg.diasAlertaSinRespuesta} días</strong>${alertas.map(c=>`<div style="margin-top:4px;">${c.bebe} (${c.mama}) — ${eq_diasDesde(c.fechaEnvioGaleria)} días sin respuesta</div>`).join('')}</div>`:'';
+  }
+  if (!_eqSesiones.length) { listaEl.innerHTML='<div class="empty">No hay sesiones cargadas todavía.</div>'; return; }
+  let html=activas.map(c=>renderCardEq(c,_eqSesiones.indexOf(c),false)).join('');
+  if (terminadas.length) {
+    html+=`<hr class="eq-seccion-sep"><div class="eq-seccion-header"><div class="eq-seccion-titulo">Trabajos terminados</div><span class="eq-count-badge">${terminadas.length}</span></div>`;
+    html+=terminadas.map(c=>renderCardEq(c,_eqSesiones.indexOf(c),true)).join('');
+  }
+  if (!activas.length&&!terminadas.length) html='<div class="empty">No hay sesiones activas.</div>';
+  listaEl.innerHTML=html;
+  _eqSesiones.forEach((_,i)=>fillEqPopOpts(i,''));
+}
+
+// ─ Carga de sesiones ─
+function guardarSesionAngie() {
+  const bebe=document.getElementById('seq-bebe')?.value.trim();
+  if (!bebe) { document.getElementById('seq-bebe')?.focus(); return; }
+  const nueva={ id:'c'+Date.now()+Math.random().toString(36).substr(2,5), bebe,
+    mama:document.getElementById('seq-mama')?.value.trim()||'',
+    fechaSesion:document.getElementById('seq-fecha')?.value||null,
+    paquete:document.getElementById('seq-paquete')?.value||null,
+    notas:document.getElementById('seq-notas')?.value.trim()||null,
+    estado:'galeria_pendiente', fechaCreacion:eq_hoy() };
+  _eqSesiones.push(nueva); eq_save();
+  const ok=document.getElementById('seq-ok');
+  if (ok) { ok.style.display='inline'; setTimeout(()=>ok.style.display='none',2000); }
+  ['seq-bebe','seq-mama','seq-fecha','seq-paquete','seq-notas'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('seq-bebe')?.focus();
+  renderEqLoteLista();
+}
+function renderEqLoteLista() {
+  const el=document.getElementById('eq-lote-lista'); if (!el) return;
+  const recientes=[..._eqSesiones].reverse().slice(0,10);
+  if (!recientes.length) { el.innerHTML=''; return; }
+  el.innerHTML=`<div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Cargadas</div>`+
+    recientes.map(c=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--white);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;font-size:13px;">
+      <span style="flex:1;color:var(--marron-d);font-weight:500;">${c.bebe}</span>
+      <span style="color:var(--muted);font-size:11px;">${c.mama||''}</span>
+      ${c.paquete?`<span class="eq-badge-paquete">${c.paquete}</span>`:''}
+      ${c.fechaSesion?`<span style="font-size:10px;color:var(--muted);">${c.fechaSesion}</span>`:''}
+    </div>`).join('');
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.estado-wrap')) _activeEqPop = null;
+});
 
 load(); showTab('diseno'); renderTarifasFotos();
 </script>
