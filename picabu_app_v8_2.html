@@ -19,18 +19,32 @@
   const fbApp = initializeApp(firebaseConfig);
   const db = getFirestore(fbApp);
   const REF = doc(db, "picabu", "pedidos");
-  onSnapshot(REF, (snap) => { if (snap.exists()) { const d = snap.data(); if (d && d.lista) { 
-    let lista = d.lista;
-    // Asignar uid a productos que no tienen uno
-    let necesitaGuardar = false;
-    lista.forEach(p => { if (p.prods) p.prods.forEach(x => { if (!x.uid) { x.uid = 'u'+Date.now()+Math.random().toString(36).substr(2,6); necesitaGuardar = true; } }); });
-    if (typeof window.setPedidosFromFirebase === 'function') window.setPedidosFromFirebase(lista);
-    else { window.pedidos = lista; localStorage.setItem("picabu_v8", JSON.stringify(lista)); }
-    if (necesitaGuardar && typeof window.saveToFirebase === 'function') window.saveToFirebase(lista);
-    const tab = document.querySelector(".tab.active")?.textContent.trim();
-    if (typeof renderDiseno === "function" && tab === "Diseño") renderDiseno(); else if (typeof renderPedidos === "function") renderPedidos();
-  } } });
-  window.saveToFirebase = async function(data) { try { const clean = JSON.parse(JSON.stringify(data, (k,v) => v === undefined ? null : v)); await setDoc(REF, { lista: clean, updated: new Date().toISOString() }); } catch(e) { console.warn("Firebase:", e); throw e; } };
+  onSnapshot(REF, (snap) => { if (snap.exists()) { const d = snap.data();
+    if (d && d.lista) {
+      let lista = d.lista;
+      let necesitaGuardar = false;
+      lista.forEach(p => { if (p.prods) p.prods.forEach(x => { if (!x.uid) { x.uid = 'u'+Date.now()+Math.random().toString(36).substr(2,6); necesitaGuardar = true; } }); });
+      if (typeof window.setPedidosFromFirebase === 'function') window.setPedidosFromFirebase(lista);
+      else { window.pedidos = lista; localStorage.setItem("picabu_v8", JSON.stringify(lista)); }
+      if (necesitaGuardar && typeof window.saveToFirebase === 'function') window.saveToFirebase(lista);
+      const tab = document.querySelector(".tab.active")?.textContent.trim();
+      if (typeof renderDiseno === "function" && tab === "Diseño") renderDiseno(); else if (typeof renderPedidos === "function") renderPedidos();
+    }
+    if (d && d.contactados !== undefined) {
+      if (typeof window.setContactadosFromFirebase === 'function') window.setContactadosFromFirebase(d.contactados);
+    }
+  } });
+  window.saveToFirebase = async function(data) {
+    try {
+      const clean = JSON.parse(JSON.stringify(data, (k,v) => v === undefined ? null : v));
+      const contactados = (() => { try { return JSON.parse(localStorage.getItem('picabu_contactados') || '{}'); } catch(e) { return {}; } })();
+      await setDoc(REF, { lista: clean, contactados, updated: new Date().toISOString() });
+    } catch(e) { console.warn("Firebase:", e); throw e; }
+  };
+  window.saveContactadosToFirebase = async function(contactados) {
+    try { await setDoc(REF, { contactados, updated: new Date().toISOString() }, { merge: true }); }
+    catch(e) { console.warn("Firebase contactados:", e); }
+  };
 
   // ── EQUIPO/SESIONES (video Renu) ──
   let _equipoSesiones = [];
@@ -2161,7 +2175,16 @@ function limpiarEntregados(origen) {
 
 // ── CONTACTADOS (coordinar entrega) ──
 function getContactados(){ try{return JSON.parse(localStorage.getItem('picabu_contactados')||'{}');}catch(e){return {};} }
-function saveContactados(o){ localStorage.setItem('picabu_contactados',JSON.stringify(o)); }
+function saveContactados(o){
+  localStorage.setItem('picabu_contactados',JSON.stringify(o));
+  if (typeof window.saveContactadosToFirebase === 'function') window.saveContactadosToFirebase(o);
+}
+window.setContactadosFromFirebase = function(contactados) {
+  const nuevo = contactados || {};
+  localStorage.setItem('picabu_contactados', JSON.stringify(nuevo));
+  const tab = document.querySelector('.tab.active')?.dataset.tab;
+  if (tab === 'diseno') renderDiseno();
+};
 function marcarContactado(key, checked){
   const o=getContactados();
   if(checked) o[key]={ ts: Date.now() }; else delete o[key];
