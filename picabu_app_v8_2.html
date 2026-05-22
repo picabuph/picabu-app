@@ -132,9 +132,9 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .alert-dias { font-size:11px; color:#9a6400; font-weight:600; white-space:nowrap; }
 
 /* CARD CLIENTE */
-.c-card { background:var(--white); border:1px solid var(--border); border-radius:14px; margin-bottom:14px; }
+.c-card { background:var(--white); border:1px solid var(--border); border-radius:14px; margin-bottom:8px; }
 .c-card.drag-over { border-color:var(--rosa); border-style:dashed; }
-.c-header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; gap:10px; border-bottom:1px solid var(--border); }
+.c-header { display:flex; align-items:center; justify-content:space-between; padding:7px 14px; gap:10px; border-bottom:1px solid var(--border); }
 .drag-handle { color:var(--muted); cursor:grab; font-size:16px; flex-shrink:0; user-select:none; }
 .c-nombre { font-family:'Yeseva One',serif; font-size:15px; color:var(--marron-d); display:inline; }
 .c-mama { font-family:'Montserrat',sans-serif; font-size:13px; color:var(--muted); font-weight:300; display:inline; margin-left:8px; white-space:nowrap; }
@@ -180,7 +180,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .nped-inp { min-width:28px; width:60px; height:20px; border-radius:5px; border:1px solid var(--rosa); background:var(--white); font-size:10px; font-family:'Montserrat',sans-serif; color:var(--marron-d); padding:0 5px; outline:none; text-align:center; }
 
 /* FOOTER */
-.c-footer { display:flex; align-items:center; gap:10px; padding:10px 18px; border-top:1px solid var(--border); flex-wrap:wrap; }
+.c-footer { display:flex; align-items:center; gap:10px; padding:7px 14px; border-top:1px solid var(--border); flex-wrap:wrap; }
 .btn-wa { padding:8px 16px; background:var(--marron-d); color:var(--rosa-l); border:none; border-radius:9px; font-size:10px; letter-spacing:1.5px; text-transform:uppercase; cursor:pointer; font-family:'Montserrat',sans-serif; font-weight:500; }
 .btn-wa:hover { background:var(--marron); }
 .btn-out { padding:8px 14px; background:none; color:var(--marron); border:1px solid var(--border); border-radius:9px; font-size:10px; letter-spacing:1px; text-transform:uppercase; cursor:pointer; font-family:'Montserrat',sans-serif; }
@@ -348,12 +348,28 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .eq-badges { display:flex; gap:5px; flex-wrap:wrap; margin-top:4px; }
 .eq-bebe-row { display:flex; align-items:baseline; gap:5px; min-width:0; }
 .eq-mama-inline { font-size:11px; color:var(--muted); font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; flex:1; }
-.eq-info-row { display:flex; gap:12px; flex-wrap:wrap; padding:8px 14px; border-top:1px solid var(--arena-l); }
+.eq-info-row { display:flex; gap:12px; flex-wrap:wrap; padding:5px 14px; border-top:1px solid var(--arena-l); }
 .eq-info-item { display:flex; flex-direction:column; gap:2px; }
 .eq-info-label { font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--muted); font-weight:600; }
 .eq-info-val { font-size:13px; color:var(--text); font-weight:500; }
-.eq-notas { font-size:12px; color:var(--text); background:var(--arena-l); border-radius:8px; padding:7px 12px; margin:0 14px 8px; line-height:1.5; }
-.eq-notas-label { font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--muted); font-weight:600; margin-bottom:3px; }
+.eq-notas { font-size:12px; color:var(--text); background:var(--arena-l); border-radius:8px; padding:5px 10px; margin:0 12px 6px; line-height:1.5; }
+.eq-notas-label { font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--muted); font-weight:600; margin-bottom:2px; }
+.eq-drag-handle { cursor:grab; color:var(--crema); font-size:16px; padding:0 4px; user-select:none; flex-shrink:0; line-height:1; }
+.eq-drag-handle:active { cursor:grabbing; }
+.eq-sync-bar { font-size:10px; color:var(--muted); text-align:right; padding:0 2px 8px; letter-spacing:0.3px; }
+.eq-sync-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:#7aaa8a; margin-right:4px; vertical-align:middle; }
+.eq-seccion-toggle { background:none; border:none; cursor:pointer; color:var(--muted); font-size:12px; padding:2px 6px; line-height:1; border-radius:5px; margin-left:auto; }
+.eq-seccion-toggle:hover { background:var(--arena-l); }
+.eq-parser-box { background:var(--arena-l); border:1px solid var(--arena); border-radius:10px; padding:12px 14px; margin-bottom:14px; }
+.eq-parser-hint { font-size:10px; color:var(--muted); margin-top:5px; }
+.eq-fl select { width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; font-family:'Montserrat',sans-serif; background:var(--bg); color:var(--text); outline:none; }
+.eq-fl textarea { width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; font-family:'Montserrat',sans-serif; background:var(--bg); color:var(--text); outline:none; resize:vertical; }
+.eq-ical-titulo { font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); font-weight:600; margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+.eq-ical-item { display:flex; align-items:center; gap:10px; padding:7px 12px; background:var(--white); border:1px solid var(--border); border-radius:9px; margin-bottom:5px; cursor:pointer; }
+.eq-ical-item:hover { background:var(--arena-l); border-color:var(--arena); }
+.eq-ical-fecha { font-size:10px; color:var(--muted); flex-shrink:0; min-width:48px; }
+.eq-ical-nombre { font-size:12px; color:var(--marron-d); font-weight:500; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.eq-ical-paq { font-size:9px; background:var(--rosa-l); color:var(--marron-d); border-radius:6px; padding:2px 7px; font-weight:600; flex-shrink:0; }
 .eq-fecha-barra { height:3px; background:var(--arena-l); border-radius:2px; margin-top:4px; width:100px; }
 .eq-fecha-barra-fill { height:100%; border-radius:2px; }
 .eq-alerta-sin-resp { background:#fde8e8; border:1px solid #f0b8b8; border-radius:10px; padding:10px 14px; margin-bottom:14px; font-size:12px; color:#7a3a3a; }
@@ -370,7 +386,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .eq-mbox-title { font-family:'Yeseva One',serif; font-size:18px; color:var(--marron-d); margin-bottom:4px; }
 .eq-mbox-sub { font-size:12px; color:var(--muted); margin-bottom:16px; }
 .eq-fl { margin-bottom:12px; }
-.eq-fl label { font-size:11px; color:var(--muted); display:block; margin-bottom:4px; }
+.eq-fl label { display:block; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:5px; font-weight:500; }
 .eq-fl input { width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; font-family:'Montserrat',sans-serif; background:var(--bg); color:var(--text); outline:none; }
 
 </style>
@@ -790,23 +806,44 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 
   <!-- PESTAÑA SESIONES EQUIPO (réplica) -->
   <div class="page" id="tab-sesiones">
-  <div id="eq-alerta-sin-resp-wrap"></div>
-  <div id="lista-sesiones-angie"></div>
+  <div style="max-width:800px;margin:0 auto;padding:16px 14px;">
+    <div id="eq-alerta-sin-resp-wrap"></div>
+    <div id="lista-sesiones-angie"></div>
+  </div>
   </div>
 
-  <!-- PESTAÑA CARGA DE SESIONES (réplica) -->
+  <!-- PESTAÑA CARGA DE SESIONES -->
   <div class="page" id="tab-carga">
-  <div style="background:var(--white);border:1px solid var(--border);border-radius:14px;padding:20px 22px;margin-bottom:18px;">
-    <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:16px;">Carga de sesiones</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" onkeydown="if(event.key==='Enter'&&event.target.tagName!=='SELECT')guardarSesionAngie()">
-      <div class="eq-fl" style="grid-column:1/3"><label>Nombre del bebé / tipo de sesión</label>
+  <div style="max-width:520px;margin:0 auto;padding:16px 14px;">
+
+  <!-- Sección iCal: próximas sesiones del calendario -->
+  <div style="background:var(--white);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:14px;">
+    <div class="eq-ical-titulo">
+      📅 Sesiones del calendario
+      <button onclick="eq_fetchCalendar()" style="margin-left:auto;padding:4px 12px;background:none;border:1px solid var(--border);border-radius:7px;font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;font-family:'Montserrat',sans-serif;color:var(--marron);">Actualizar</button>
+    </div>
+    <div id="eq-ical-sugerencias"><div style="font-size:11px;color:var(--muted);">Tocá "Actualizar" para ver sesiones de los próximos 30 días.</div></div>
+  </div>
+
+  <!-- Formulario completo -->
+  <div style="background:var(--white);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:14px;">
+    <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:14px;">Nueva sesión</div>
+
+    <div class="eq-parser-box">
+      <label style="display:block;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--marron);margin-bottom:5px;font-weight:600;">Pegar desde agenda (opcional)</label>
+      <textarea id="seq-parser" rows="2" placeholder="Ej: Clara CS (Melody Petrosillo) Paq Premium" oninput="eq_aplicarParser()" style="width:100%;padding:8px 12px;border:1px solid var(--arena);border-radius:8px;font-size:12px;font-family:'Montserrat',sans-serif;background:var(--white);color:var(--text);outline:none;resize:none;"></textarea>
+      <div class="eq-parser-hint">Detecta nombre, mamá y paquete — podés editar después</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="eq-fl" style="grid-column:1/3"><label>Nombre del bebé / sesión</label>
         <input id="seq-bebe" type="text" placeholder="Ej: Valentina NB" autocomplete="off"></div>
       <div class="eq-fl"><label>Nombre de la mamá</label>
         <input id="seq-mama" type="text" placeholder="Ej: Laura García" autocomplete="off"></div>
       <div class="eq-fl"><label>Fecha de sesión</label>
         <input id="seq-fecha" type="date"></div>
       <div class="eq-fl"><label>Paquete</label>
-        <select id="seq-paquete" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);outline:none;">
+        <select id="seq-paquete" onchange="eq_actualizarFotosHint()">
           <option value="">— sin especificar —</option>
           <option value="petite">Petite (10 fotos)</option>
           <option value="premium">Premium (20 fotos)</option>
@@ -816,8 +853,26 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
           <option value="petite lifestyle">Petite Lifestyle (25 fotos)</option>
           <option value="premium lifestyle">Premium Lifestyle (50 fotos)</option>
           <option value="video backstage">Video de backstage</option>
-        </select></div>
-      <div class="eq-fl"><label>Notas (opcional)</label>
+        </select>
+        <div id="seq-fotos-hint" style="display:none;font-size:10px;color:var(--muted);margin-top:4px;"></div>
+      </div>
+      <div class="eq-fl"><label>Estado inicial</label>
+        <select id="seq-estado" onchange="eq_sincEstadoForm()">
+          <option value="galeria_pendiente">Galería pendiente</option>
+          <option value="pendiente_cliente">Pendiente cliente</option>
+          <option value="edicion_renu">Edición</option>
+          <option value="edicion_terminada">Edición terminada</option>
+          <option value="para_subir">Para subir</option>
+          <option value="subidas">Subidas</option>
+        </select>
+      </div>
+      <div class="eq-fl" id="seq-wrap-fecha-conf" style="display:none"><label>Fecha confirmación de fotos</label>
+        <input id="seq-fecha-conf" type="date" oninput="eq_autoLimiteForm()"></div>
+      <div class="eq-fl" id="seq-wrap-fecha-limite" style="display:none"><label>Fecha límite entrega (30 días)</label>
+        <input id="seq-fecha-limite" type="date"></div>
+      <div class="eq-fl" id="seq-wrap-cant" style="display:none"><label>Cantidad de fotos</label>
+        <input id="seq-cant" type="number" placeholder="Ej: 20" min="1"></div>
+      <div class="eq-fl" style="grid-column:1/3"><label>Notas (opcional)</label>
         <input id="seq-notas" type="text" placeholder="Ej: cliente VIP, doble sesión..."></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:4px;justify-content:flex-end;align-items:center;">
@@ -825,8 +880,10 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
       <button onclick="guardarSesionAngie()" style="padding:10px 24px;background:var(--marron-d);color:var(--rosa-l);border:none;border-radius:9px;cursor:pointer;font-size:10px;letter-spacing:2px;text-transform:uppercase;font-family:'Montserrat',sans-serif;">Guardar y cargar otro</button>
     </div>
   </div>
+
   <div id="eq-lote-lista"></div>
-  </div>
+  </div><!-- /max-width wrapper -->
+  </div><!-- /tab-carga -->
 
 </div>
 
@@ -1022,7 +1079,13 @@ function save(idx) {
   sincronizarBackup();
 }
 
-let fbSyncStatus = (()=>{ try{ return JSON.parse(localStorage.getItem('picabu_sync')||'{}'); }catch(e){ return {}; } })();
+let fbSyncStatus = (()=>{
+  try {
+    const s = JSON.parse(localStorage.getItem('picabu_sync')||'{}');
+    Object.keys(s).forEach(k => { if (s[k].status === 'saving') s[k].status = 'ok'; });
+    return s;
+  } catch(e) { return {}; }
+})();
 
 function fmtTs(ts) {
   if (!ts) return '';
@@ -2088,7 +2151,7 @@ function showTab(name){
   if(name==='precios'){ renderDBConfig(); renderTarifasFotos(); }
   if(name==='config') renderEstadosConfig();
   if(name==='sesiones') renderSesionesAngie();
-  if(name==='carga') renderEqLoteLista();
+  if(name==='carga') { renderEqLoteLista(); eq_fetchCalendar(); }
 }
 
 // ── DRAG & DROP DE PESTAÑAS ──
@@ -2385,6 +2448,7 @@ let _eqSesiones = [];
 let _eqCFIdx = null;
 window.setEquipoSesionesLocal = function(lista) {
   _eqSesiones = lista;
+  _eqLastSync = new Date();
   const tab = document.querySelector('.tab.active')?.dataset.tab;
   if (tab==='sesiones') renderSesionesAngie();
   if (tab==='carga') renderEqLoteLista();
@@ -2498,7 +2562,7 @@ function renderCardEq(c, idx, compacto) {
   const dropdown=`<div class="estado-wrap"><button class="estado-btn" style="background:${e.bg};" onclick="event.stopPropagation();toggleEqPop(${idx})"><span class="estado-btn-lbl">${e.label}</span><span class="estado-btn-chv"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="#5a4a42" stroke-width="1.5" fill="none"/></svg></span></button><div class="estado-pop" id="eqpop-${idx}"><input class="estado-pop-inp" placeholder="Buscar estado..." oninput="fillEqPopOpts(${idx},this.value)"><div class="estado-opts" id="eqpop-opts-${idx}"></div></div></div>`;
   let acciones='';
   if (!compacto) {
-    if (c.estado==='galeria_pendiente') acciones+=`<button class="eq-btn-accion eq-btn-accion-pri" onclick="eq_marcarEnvioGaleria(${idx})">Galería enviada</button>`;
+    // sin botón "Galería enviada"
   } else {
     acciones+=`<button class="eq-btn-accion" onclick="eq_marcarVista(${idx})">${c.vista?'✓ Vista':'Marcar vista'}</button>`;
     acciones+=`<button class="eq-btn-accion eq-btn-accion-del" onclick="eq_eliminarEntregada(${idx})">Eliminar</button>`;
@@ -2508,8 +2572,13 @@ function renderCardEq(c, idx, compacto) {
     acciones+=` ${c.tareaVideoHecho?`<button class="eq-btn-accion eq-btn-accion-video-done" style="cursor:default;opacity:0.7" disabled>✓ Video hecho</button>`:`<button class="eq-btn-accion eq-btn-accion-video-done" onclick="eq_marcarVideo(${idx})">✓ Video hecho</button>`}`;
   }
   if (c.sinVideo||c.videoSinGrabar) acciones+=` <span style="font-size:10px;color:var(--muted);letter-spacing:0.5px;">— Sin video</span>`;
-  return `<div class="c-card${compacto&&c.vista?' eq-vista':''}">
+  return `<div class="c-card${compacto&&c.vista?' eq-vista':''}" draggable="true" data-id="${c.id}"
+    ondragstart="eqDragStart(event,'${c.id}')"
+    ondragover="eqDragOver(event)"
+    ondragleave="eqDragLeave(event)"
+    ondrop="eqDrop(event,'${c.id}')">
     <div class="c-header">
+      <span class="eq-drag-handle" title="Arrastrar para reordenar">⠿</span>
       <div class="c-nombres" style="flex:1;min-width:0;">
         <div class="eq-bebe-row"><span class="c-nombre">${c.bebe||'—'}</span>${c.mama?`<span class="eq-mama-inline">${c.mama}</span>`:''}</div>
         <div class="eq-badges">
@@ -2541,41 +2610,215 @@ function renderSesionesAngie() {
     if (c.tareaVideoPendiente&&!c.tareaVideoHecho&&!c.sinVideo&&!c.videoSinGrabar) return false;
     return true;
   };
-  const sorted=[..._eqSesiones].sort((a,b)=>{ if(!a.fechaSesion&&!b.fechaSesion)return 0; if(!a.fechaSesion)return 1; if(!b.fechaSesion)return -1; return a.fechaSesion.localeCompare(b.fechaSesion); });
-  const activas=sorted.filter(c=>!estaTerminado(c));
-  const terminadas=sorted.filter(c=>estaTerminado(c));
+  const ordenadas=eq_getSesionesOrdenadas();
+  const activas=ordenadas.filter(c=>!estaTerminado(c));
+  const terminadas=ordenadas.filter(c=>estaTerminado(c));
   // Alerta sin respuesta
   const alertas=_eqSesiones.filter(c=>c.estado==='pendiente_cliente'&&c.fechaEnvioGaleria&&eq_diasDesde(c.fechaEnvioGaleria)>=cfg.diasAlertaSinRespuesta);
   if (alertaEl) {
     alertaEl.innerHTML=alertas.length?`<div class="eq-alerta-sin-resp"><strong>⚠ Sin respuesta — más de ${cfg.diasAlertaSinRespuesta} días</strong>${alertas.map(c=>`<div style="margin-top:4px;">${c.bebe} (${c.mama}) — ${eq_diasDesde(c.fechaEnvioGaleria)} días sin respuesta</div>`).join('')}</div>`:'';
   }
   if (!_eqSesiones.length) { listaEl.innerHTML='<div class="empty">No hay sesiones cargadas todavía.</div>'; return; }
-  let html=activas.map(c=>renderCardEq(c,_eqSesiones.indexOf(c),false)).join('');
+  // Sync bar
+  const syncTxt=_eqLastSync
+    ?`<span class="eq-sync-dot"></span>Sincronizado ${_eqLastSync.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}`
+    :'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#ccc;margin-right:4px;vertical-align:middle;"></span>Conectando con Firebase...';
+  let html=`<div class="eq-sync-bar">${syncTxt}</div>`;
+  html+=activas.map(c=>renderCardEq(c,_eqSesiones.indexOf(c),false)).join('');
   if (terminadas.length) {
-    html+=`<hr class="eq-seccion-sep"><div class="eq-seccion-header"><div class="eq-seccion-titulo">Trabajos terminados</div><span class="eq-count-badge">${terminadas.length}</span></div>`;
-    html+=terminadas.map(c=>renderCardEq(c,_eqSesiones.indexOf(c),true)).join('');
+    html+=`<hr class="eq-seccion-sep"><div class="eq-seccion-header">
+      <div class="eq-seccion-titulo">Trabajos terminados</div>
+      <span class="eq-count-badge">${terminadas.length}</span>
+      <button class="eq-seccion-toggle" onclick="toggleEqTerminados()" title="${_eqTerminadosOpen?'Ocultar':'Mostrar'}">${_eqTerminadosOpen?'▼':'▶'}</button>
+    </div>`;
+    if (_eqTerminadosOpen) html+=terminadas.map(c=>renderCardEq(c,_eqSesiones.indexOf(c),true)).join('');
   }
-  if (!activas.length&&!terminadas.length) html='<div class="empty">No hay sesiones activas.</div>';
+  if (!activas.length&&!terminadas.length) html+='<div class="empty">No hay sesiones activas.</div>';
   listaEl.innerHTML=html;
   _eqSesiones.forEach((_,i)=>fillEqPopOpts(i,''));
+}
+
+// ─ Orden manual de sesiones ─
+let _eqIcalCache = [];
+let _eqManualOrder = JSON.parse(localStorage.getItem('eq_sesiones_order')||'[]');
+let _eqDragId = null;
+function eq_getSesionesOrdenadas() {
+  if (!_eqManualOrder.length) return _eqSesiones;
+  const ordered = [];
+  _eqManualOrder.forEach(id => { const s=_eqSesiones.find(c=>c.id===id); if(s) ordered.push(s); });
+  _eqSesiones.forEach(c => { if(!_eqManualOrder.includes(c.id)) ordered.push(c); });
+  return ordered;
+}
+function eqDragStart(e, id) { _eqDragId=id; e.dataTransfer.effectAllowed='move'; }
+function eqDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+function eqDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+function eqDrop(e, targetId) {
+  e.preventDefault(); e.currentTarget.classList.remove('drag-over');
+  if (!_eqDragId || _eqDragId===targetId) return;
+  const display = eq_getSesionesOrdenadas().map(c=>c.id);
+  const fi=display.indexOf(_eqDragId), ti=display.indexOf(targetId);
+  if (fi===-1||ti===-1) return;
+  display.splice(fi,1); display.splice(ti,0,_eqDragId);
+  _eqManualOrder=display; localStorage.setItem('eq_sesiones_order',JSON.stringify(_eqManualOrder));
+  renderSesionesAngie(); _eqDragId=null;
+}
+
+// ─ Terminados colapsable ─
+let _eqTerminadosOpen = localStorage.getItem('eq_terminados_open')!=='false';
+function toggleEqTerminados() {
+  _eqTerminadosOpen=!_eqTerminadosOpen;
+  localStorage.setItem('eq_terminados_open',String(_eqTerminadosOpen));
+  renderSesionesAngie();
+}
+
+// ─ Sync indicator ─
+let _eqLastSync = null;
+
+// ─ iCal calendarios ─
+const EQ_ICAL_PROXY='https://wispy-sun-ee88.picabu-ph.workers.dev';
+const EQ_ICAL_URLS=[
+  'https://calendar.google.com/calendar/ical/115ef3604215752ea3aada6200fb4789012c32f7a2bfc602aea0f28ef6569071%40group.calendar.google.com/private-121f05b7fbc537f1b512fcea3a1b63bd/basic.ics'
+];
+function eq_parseIcal(text) {
+  const events=[]; const blocks=text.split('BEGIN:VEVENT');
+  for (let i=1;i<blocks.length;i++) {
+    const b=blocks[i];
+    const sm=b.match(/SUMMARY:([^\r\n]+)/); const ds=b.match(/DTSTART(?:;[^:]+)?:([^\r\n]+)/);
+    if (!sm||!ds) continue;
+    const summary=sm[1].replace(/\\,/g,',').replace(/\\n/g,' ').trim();
+    const dtStr=ds[1].trim();
+    if (dtStr.length<8) continue;
+    const fecha=`${dtStr.substr(0,4)}-${dtStr.substr(4,2)}-${dtStr.substr(6,2)}`;
+    events.push({summary,fecha});
+  }
+  return events;
+}
+async function eq_fetchCalendar() {
+  const el=document.getElementById('eq-ical-sugerencias'); if (!el) return;
+  el.innerHTML='<div style="font-size:11px;color:var(--muted);">Cargando...</div>';
+  const hoy=eq_hoy();
+  const lim=new Date(); lim.setDate(lim.getDate()+30);
+  const limStr=lim.toISOString().split('T')[0];
+  let eventos=[];
+  for (const url of EQ_ICAL_URLS) {
+    try {
+      const resp=await fetch(`${EQ_ICAL_PROXY}?url=${encodeURIComponent(url)}`);
+      if (!resp.ok) continue;
+      const text=await resp.text();
+      eq_parseIcal(text).forEach(e=>{ if(e.fecha>=hoy&&e.fecha<=limStr) eventos.push(e); });
+    } catch(e) { console.warn('iCal:',e); }
+  }
+  eventos.sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const seen=new Set(); eventos=eventos.filter(e=>{ const k=e.fecha+e.summary; if(seen.has(k)) return false; seen.add(k); return true; });
+  _eqIcalCache=eventos;
+  eq_renderIcalList();
+}
+function eq_renderIcalList() {
+  const el=document.getElementById('eq-ical-sugerencias'); if (!el) return;
+  if (!_eqIcalCache.length) { el.innerHTML='<div style="font-size:11px;color:var(--muted);">No hay sesiones en los próximos 30 días.</div>'; return; }
+  const _norm=s=>(s||'').toLowerCase().trim();
+  const _nMatch=(a,b)=>{const na=_norm(a),nb=_norm(b);if(!na||!nb)return false;return na===nb||na.includes(nb)||nb.includes(na);};
+  const pendientes=_eqIcalCache.filter(ev=>{
+    const p=eq_parsearTextoCalendario(ev.summary);
+    return !_eqSesiones.some(c=>c.fechaSesion===ev.fecha&&(_nMatch(c.bebe,p.nombre)||_nMatch(c.mama,p.mama)));
+  });
+  if (!pendientes.length) { el.innerHTML='<div style="font-size:11px;color:#7aaa8a;">✓ Todas las sesiones del calendario ya están cargadas.</div>'; return; }
+  const el2=document.getElementById('eq-ical-sugerencias'); if (!el2) return;
+  el2.innerHTML=pendientes.map(ev=>{
+    const p=eq_parsearTextoCalendario(ev.summary);
+    const bEsc=(p.nombre||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    const mEsc=(p.mama||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    return `<div class="eq-ical-item" onclick="eq_fillFormFromIcal('${ev.fecha}','${bEsc}','${mEsc}','${p.paquete||''}')">
+      <span class="eq-ical-fecha">${eq_fmt(ev.fecha)}</span>
+      <span class="eq-ical-nombre">${ev.summary}</span>
+      ${p.paquete?`<span class="eq-ical-paq">${p.paquete}</span>`:''}
+    </div>`;
+  }).join('');
+}
+function eq_parsearTextoCalendario(txt) {
+  const mamaMatch=txt.match(/\(([^)]+)\)/);
+  const mama=mamaMatch?mamaMatch[1].trim():'';
+  let nombre=txt.replace(/\(.*\).*/,'').trim();
+  nombre=nombre.replace(/^\d{1,2}[:h][0-9]{0,2}\s*/i,'').trim();
+  let paquete='';
+  const paqKeys=['petite familiar','premium familia','petite lifestyle','premium lifestyle','video backstage','petite','premium','gold'];
+  const tl=txt.toLowerCase();
+  for (const k of paqKeys) { if(tl.includes(k)){paquete=k;break;} }
+  if (!paquete) {
+    const pm=txt.match(/paq\w*\s+([\w\s]+?)(?:\s*$)/i);
+    if (pm) { const raw=pm[1].trim().toLowerCase(); for(const k of paqKeys){if(raw.includes(k)||k.includes(raw)){paquete=k;break;}} if(!paquete)paquete=raw; }
+  }
+  return {nombre,mama,paquete};
+}
+function eq_fillFormFromIcal(fecha,bebe,mama,paquete) {
+  const bebeEl=document.getElementById('seq-bebe');
+  if(bebeEl){bebeEl.value=bebe;}
+  const mamaEl=document.getElementById('seq-mama'); if(mamaEl) mamaEl.value=mama;
+  const fechaEl=document.getElementById('seq-fecha'); if(fechaEl) fechaEl.value=fecha;
+  const paqEl=document.getElementById('seq-paquete');
+  if(paqEl&&paquete){const opt=Array.from(paqEl.options).find(o=>o.value===paquete||o.value.startsWith(paquete));if(opt)paqEl.value=opt.value;}
+  eq_actualizarFotosHint();
+  document.getElementById('seq-bebe')?.scrollIntoView({behavior:'smooth',block:'center'});
+  document.getElementById('seq-bebe')?.focus();
+}
+
+// ─ Parser y form helpers ─
+function eq_aplicarParser() {
+  const txt=document.getElementById('seq-parser')?.value||'';
+  if (!txt.trim()) return;
+  const {nombre,mama,paquete}=eq_parsearTextoCalendario(txt);
+  if(nombre){const el=document.getElementById('seq-bebe');if(el)el.value=nombre;}
+  if(mama){const el=document.getElementById('seq-mama');if(el)el.value=mama;}
+  if(paquete){const el=document.getElementById('seq-paquete');if(el){const opt=Array.from(el.options).find(o=>o.value===paquete||o.value.startsWith(paquete));if(opt)el.value=opt.value;}}
+  eq_actualizarFotosHint();
+}
+function eq_actualizarFotosHint() {
+  const paq=document.getElementById('seq-paquete')?.value||'';
+  const hint=document.getElementById('seq-fotos-hint'); if(!hint) return;
+  const fotos=eq_fotosDelPaquete(paq);
+  if(fotos){hint.style.display='block';hint.textContent=`${fotos} fotos incluidas en el paquete`;}
+  else hint.style.display='none';
+}
+function eq_sincEstadoForm() {
+  const estado=document.getElementById('seq-estado')?.value||'';
+  const needConf=['edicion_renu','edicion_terminada','para_subir','subidas'];
+  const showConf=needConf.includes(estado);
+  const showCant=needConf.includes(estado);
+  document.getElementById('seq-wrap-fecha-conf').style.display=showConf?'':'none';
+  document.getElementById('seq-wrap-fecha-limite').style.display=showConf?'':'none';
+  document.getElementById('seq-wrap-cant').style.display=showCant?'':'none';
+}
+function eq_autoLimiteForm() {
+  const v=document.getElementById('seq-fecha-conf')?.value;
+  if(v){const el=document.getElementById('seq-fecha-limite');if(el)el.value=eq_calcLimite(v,30);}
 }
 
 // ─ Carga de sesiones ─
 function guardarSesionAngie() {
   const bebe=document.getElementById('seq-bebe')?.value.trim();
   if (!bebe) { document.getElementById('seq-bebe')?.focus(); return; }
-  const nueva={ id:'c'+Date.now()+Math.random().toString(36).substr(2,5), bebe,
+  const estado=document.getElementById('seq-estado')?.value||'galeria_pendiente';
+  const fechaConf=document.getElementById('seq-fecha-conf')?.value||null;
+  const nueva={
+    id:'c'+Date.now()+Math.random().toString(36).substr(2,5), bebe,
     mama:document.getElementById('seq-mama')?.value.trim()||'',
     fechaSesion:document.getElementById('seq-fecha')?.value||null,
     paquete:document.getElementById('seq-paquete')?.value||null,
     notas:document.getElementById('seq-notas')?.value.trim()||null,
-    estado:'galeria_pendiente', fechaCreacion:eq_hoy() };
+    estado, fechaCreacion:eq_hoy(),
+    fechaConfirmacion:fechaConf,
+    fechaLimite:document.getElementById('seq-fecha-limite')?.value||( fechaConf?eq_calcLimite(fechaConf,30):null ),
+    cantFotos:document.getElementById('seq-cant')?.value?parseInt(document.getElementById('seq-cant').value):null,
+  };
   _eqSesiones.push(nueva); eq_save();
   const ok=document.getElementById('seq-ok');
   if (ok) { ok.style.display='inline'; setTimeout(()=>ok.style.display='none',2000); }
-  ['seq-bebe','seq-mama','seq-fecha','seq-paquete','seq-notas'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  ['seq-parser','seq-bebe','seq-mama','seq-fecha','seq-paquete','seq-notas','seq-fecha-conf','seq-fecha-limite','seq-cant'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('seq-estado').value='galeria_pendiente';
+  eq_sincEstadoForm(); eq_actualizarFotosHint();
   document.getElementById('seq-bebe')?.focus();
   renderEqLoteLista();
+  eq_renderIcalList();
 }
 function renderEqLoteLista() {
   const el=document.getElementById('eq-lote-lista'); if (!el) return;
