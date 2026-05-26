@@ -1432,7 +1432,8 @@ function clienteCardHtml(p, i, showPrecio, allowNameEdit, soloProveedor) {
   });
   const prodsHtml = prodsVisibles.map(x => prodRowHtml(i, x, p.prods.indexOf(x), showPrecio, allowNameEdit, prefijo, p)).join('');
 
-  const activosP = p.prods.filter(x => x.estado !== 'Entregado');
+  // Solo productos visibles (no fotos extras soloWA ni plantillas digitales)
+  const activosP = p.prods.filter(x => x.estado !== 'Entregado' && !x.soloWA && !esPlantilla(x.nombre));
   const todoListo = activosP.length > 0 && activosP.every(x => x.estado === 'Listo en estudio');
   const sesionesEq = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : [];
   const equipoSesCard = sesionesEq.find(s => s.mama && s.mama.toLowerCase() === (p.mama||'').toLowerCase() && s.bebe && s.bebe.toLowerCase().includes((p.bebe||'').toLowerCase()));
@@ -1565,7 +1566,7 @@ function renderDiseno() {
   // Bandeja 2: Coordinar entrega (todos los productos Listo en estudio)
   const gruposEnt = {};
   pedidos.forEach((p) => {
-    const activos = p.prods.filter(x => x.estado !== 'Entregado');
+    const activos = p.prods.filter(x => x.estado !== 'Entregado' && !x.soloWA && !esPlantilla(x.nombre));
     const sesiones = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : [];
     const equipoS = sesiones.find(s => s.mama && s.mama.toLowerCase() === (p.mama||'').toLowerCase() && s.bebe && s.bebe.toLowerCase().includes((p.bebe||'').toLowerCase()));
     const videoResuelto = !equipoS || equipoS.tareaVideoHecho === true || equipoS.videoSinGrabar === true;
