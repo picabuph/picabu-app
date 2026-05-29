@@ -1483,7 +1483,8 @@ function clienteCardHtml(p, i, showPrecio, allowNameEdit, soloProveedor) {
 
 // ── RENDER PEDIDOS ──
 function todosEntregados(p) {
-  return p.prods.length > 0 && p.prods.every(x => x.estado === 'Entregado');
+  const visibles = (p.prods||[]).filter(x => !x.soloWA && !esPlantilla(x.nombre));
+  return visibles.length > 0 && visibles.every(x => x.estado === 'Entregado');
 }
 
 function renderPedidos() {
@@ -1603,15 +1604,23 @@ function renderDiseno() {
 
   // Pendientes: nunca contactados
   const pendientesEnt = keysEnt.filter(k => !contactados[k]);
-  // Seguimiento saldo: ya contactados, tienen saldo, pasaron 2+ días
+  // Seguimiento saldo: ya contactados, tienen saldo pendiente, pasaron 2+ días
   const seguimientoSaldo = keysEnt.filter(k => {
     const c = contactados[k];
     if (!c || !c.ts) return false;
     if (!gruposEnt[k].tieneSaldo) return false;
     return (ahora - c.ts) >= MS_2DIAS;
   });
+  // Seguimiento pagado: ya contactados, pagados, pasaron 15+ días sin retirar
+  const MS_15DIAS = 15 * 24 * 60 * 60 * 1000;
+  const seguimientoPagado = keysEnt.filter(k => {
+    const c = contactados[k];
+    if (!c || !c.ts) return false;
+    if (gruposEnt[k].tieneSaldo) return false;
+    return (ahora - c.ts) >= MS_15DIAS;
+  });
 
-  const hayAlertas = pendientesEnt.length > 0 || seguimientoSaldo.length > 0;
+  const hayAlertas = pendientesEnt.length > 0 || seguimientoSaldo.length > 0 || seguimientoPagado.length > 0;
   if (hayAlertas) {
     let html = `<div class="alert-box">`;
     if (pendientesEnt.length) {
@@ -1623,7 +1632,7 @@ function renderDiseno() {
     }
     if (seguimientoSaldo.length) {
       html += `${pendientesEnt.length ? '<div style="margin-top:10px;border-top:1px solid #e8c5c5;padding-top:10px;"></div>' : ''}
-      <div class="alert-title" style="color:#a05050;">⏰ Seguimiento — tiene saldo pendiente</div>
+      <div class="alert-title" style="color:#a05050;">⏰ Saldo pendiente — volvé a contactar</div>
       ${seguimientoSaldo.map(k=>{
         const c = contactados[k];
         const diasPasados = Math.floor((ahora - c.ts) / (24*60*60*1000));
@@ -1631,7 +1640,22 @@ function renderDiseno() {
           <input type="checkbox" onchange="marcarContactado('${k.replace(/'/g,"\\'")}',this.checked)" style="accent-color:var(--marron);width:15px;height:15px;cursor:pointer;flex-shrink:0;">
           <div style="flex:1;">
             <div class="alert-cliente" style="margin:0;">${k}</div>
-            <div style="font-size:10px;color:#a05050;margin-top:2px;">Hace ${diasPasados} día${diasPasados!==1?'s':''} sin actualización · volvé a contactar</div>
+            <div style="font-size:10px;color:#a05050;margin-top:2px;">Hace ${diasPasados} día${diasPasados!==1?'s':''} sin retirar</div>
+          </div>
+        </div>`;
+      }).join('')}`;
+    }
+    if (seguimientoPagado.length) {
+      html += `${(pendientesEnt.length || seguimientoSaldo.length) ? '<div style="margin-top:10px;border-top:1px solid #e8ddd8;padding-top:10px;"></div>' : ''}
+      <div class="alert-title" style="color:var(--muted);">📦 Pendiente de retiro</div>
+      ${seguimientoPagado.map(k=>{
+        const c = contactados[k];
+        const diasPasados = Math.floor((ahora - c.ts) / (24*60*60*1000));
+        return `<div class="alert-grupo" style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" onchange="marcarContactado('${k.replace(/'/g,"\\'")}',this.checked)" style="accent-color:var(--marron);width:15px;height:15px;cursor:pointer;flex-shrink:0;">
+          <div style="flex:1;">
+            <div class="alert-cliente" style="margin:0;">${k}</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px;">Hace ${diasPasados} días que pagó y aún no retiró</div>
           </div>
         </div>`;
       }).join('')}`;
