@@ -242,9 +242,33 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 /* PRÓXIMO ENVÍO */
 .envio-group { margin-bottom:20px; }
 .envio-prov { font-family:'Yeseva One',serif; font-size:16px; color:var(--marron-d); margin-bottom:10px; padding-bottom:6px; border-bottom:2px solid var(--arena); }
-.envio-row { display:flex; flex-direction:column; gap:3px; padding:10px 14px; background:var(--white); border:1px solid var(--border); border-radius:9px; margin-bottom:7px; }
+.envio-row { display:flex; align-items:flex-start; gap:10px; padding:10px 14px; background:var(--white); border:1px solid var(--border); border-radius:9px; margin-bottom:7px; }
+.envio-row-info { display:flex; flex-direction:column; gap:2px; flex:1; }
 .envio-prod { font-size:13px; color:var(--muted); }
 .envio-cliente { font-size:14px; font-weight:600; color:var(--marron-d); }
+.envio-precio { font-size:11px; color:var(--muted); }
+.despacho-chk { accent-color:var(--marron); width:16px; height:16px; cursor:pointer; flex-shrink:0; margin-top:2px; }
+.despacho-bar { margin-top:14px; padding-top:12px; border-top:1px solid var(--border); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.despacho-bar label { font-size:10px; color:var(--muted); letter-spacing:1.5px; text-transform:uppercase; white-space:nowrap; }
+.despacho-bar input[type=date] { border:1px solid var(--border); border-radius:7px; padding:5px 9px; font-size:12px; font-family:'Montserrat',sans-serif; background:var(--white); color:var(--text); }
+.btn-despacho { background:var(--marron-d); color:var(--crema); border:none; border-radius:7px; padding:7px 16px; font-size:11px; font-family:'Montserrat',sans-serif; font-weight:600; letter-spacing:0.5px; cursor:pointer; }
+.historial-titulo { font-family:'Yeseva One',serif; font-size:16px; color:var(--marron-d); margin-bottom:12px; padding-bottom:6px; border-bottom:2px solid var(--arena); margin-top:28px; }
+.despacho-card { background:var(--white); border:1px solid var(--border); border-radius:10px; margin-bottom:10px; overflow:hidden; }
+.despacho-card-head { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid var(--border); gap:8px; flex-wrap:wrap; }
+.despacho-card-fecha { font-size:13px; font-weight:700; color:var(--marron-d); }
+.despacho-card-meta { font-size:11px; color:var(--muted); margin-left:8px; }
+.despacho-card-acciones { display:flex; align-items:center; gap:8px; }
+.despacho-pago-sel { font-size:11px; border-radius:6px; padding:4px 8px; font-family:'Montserrat',sans-serif; cursor:pointer; border-width:1px; border-style:solid; }
+.despacho-pago-sel.pendiente { border-color:#e0a030; background:#fdf4e3; color:#9a6400; }
+.despacho-pago-sel.realizado { border-color:#7aaa8a; background:#e8f5ee; color:#3a6a50; }
+.btn-del-despacho { background:none; border:1px solid var(--border); border-radius:6px; padding:4px 9px; font-size:11px; color:var(--muted); cursor:pointer; font-family:'Montserrat',sans-serif; }
+.despacho-card-body { padding:6px 14px 10px; }
+.despacho-item { display:flex; justify-content:space-between; align-items:baseline; padding:5px 0; border-bottom:1px solid var(--bg); gap:8px; }
+.despacho-item:last-child { border-bottom:none; }
+.despacho-item-left { display:flex; flex-direction:column; gap:1px; }
+.despacho-item-cliente { font-size:12px; font-weight:600; color:var(--marron-d); }
+.despacho-item-prod { font-size:12px; color:var(--muted); }
+.despacho-item-precio { font-size:12px; color:var(--text); font-weight:500; white-space:nowrap; }
 
 /* EXCEL */
 .excel-wrap { overflow-x:auto; }
@@ -1862,23 +1886,103 @@ function onDropProd(e,ci,pi) {
 
 // ── PRÓXIMO ENVÍO ──
 function renderEnvio() {
-  const el=document.getElementById('lista-envio');
-  const grupos={};
-  pedidos.forEach(p=>p.prods.forEach(x=>{
-    if(x.estado==='En producción' && !esPlantilla(x.nombre)){
-      const prov=x.proveedor||'Sin proveedor asignado';
-      if(!grupos[prov]) grupos[prov]=[];
-      grupos[prov].push({prod:nombreDiseno(p,x),cliente:p.bebe,mama:p.mama,nped:x.numPedido||''});
+// ── DESPACHOS ──
+function getDespachos() { try { return JSON.parse(localStorage.getItem('picabu_despachos')||'[]'); } catch(e) { return []; } }
+function saveDespachos(arr) { localStorage.setItem('picabu_despachos', JSON.stringify(arr)); }
+
+function confirmarDespachoFn() {
+  const fechaEl = document.getElementById('despacho-fecha');
+  if (!fechaEl?.value) { fechaEl?.focus(); return; }
+  const items = [];
+  document.querySelectorAll('.despacho-chk:checked').forEach(chk => {
+    try { items.push(JSON.parse(chk.dataset.item)); } catch(e) {}
+  });
+  if (!items.length) { alert('Seleccioná al menos un producto para despachar.'); return; }
+  const total = items.reduce((s, it) => s + (it.precio || 0), 0);
+  const despacho = { id: 'ds-' + Date.now(), fecha: fechaEl.value, proveedor: 'COPY', items, pago: 'pendiente', total };
+  const arr = getDespachos();
+  arr.unshift(despacho);
+  saveDespachos(arr);
+  renderEnvio();
+}
+
+function cambiarPagoDespacho(id, val) {
+  const arr = getDespachos();
+  const d = arr.find(x => x.id === id);
+  if (d) { d.pago = val; saveDespachos(arr); renderEnvio(); }
+}
+
+function eliminarDespacho(id) {
+  if (!confirm('¿Eliminar este registro del historial?')) return;
+  saveDespachos(getDespachos().filter(x => x.id !== id));
+  renderEnvio();
+}
+
+function renderEnvio() {
+  const el = document.getElementById('lista-envio');
+  const grupos = {};
+  pedidos.forEach(p => p.prods.forEach(x => {
+    if (x.estado === 'En producción' && !esPlantilla(x.nombre)) {
+      const prov = x.proveedor || 'Sin proveedor asignado';
+      if (!grupos[prov]) grupos[prov] = [];
+      grupos[prov].push({ prod: nombreDiseno(p, x), cliente: p.bebe, mama: p.mama, nped: x.numPedido || '', precio: x.precio || 0 });
     }
   }));
-  if(!Object.keys(grupos).length){el.innerHTML='<div class="empty">No hay productos en producción.</div>';return;}
-  el.innerHTML=Object.entries(grupos).map(([prov,items])=>
-    `<div class="envio-group"><div class="envio-prov">${prov}</div>
-    ${items.map(it=>{
-      const npedHtml = it.nped ? `<span style="font-size:11px;background:#d4c8bf;color:#3a2e2a;border-radius:4px;padding:1px 6px;margin-left:6px;font-weight:600;">#${it.nped}</span>` : '';
-      return `<div class="envio-row"><div class="envio-cliente">${it.cliente} · ${it.mama}</div><div class="envio-prod">${it.prod}${npedHtml}</div></div>`;
-    }).join('')}
-    </div>`).join('');
+
+  let html = '';
+  if (!Object.keys(grupos).length) {
+    html = '<div class="empty">No hay productos en producción.</div>';
+  } else {
+    html = Object.entries(grupos).map(([prov, items]) => {
+      const esCOPY = prov === 'COPY';
+      const itemsHtml = items.map(it => {
+        const npedHtml = it.nped ? `<span style="font-size:11px;background:#d4c8bf;color:#3a2e2a;border-radius:4px;padding:1px 6px;margin-left:6px;font-weight:600;">#${it.nped}</span>` : '';
+        const chk = esCOPY ? `<input type="checkbox" class="despacho-chk" data-item='${JSON.stringify(it).replace(/'/g,"&#39;")}'>` : '';
+        const precio = esCOPY ? `<div class="envio-precio">${fmt(it.precio)}</div>` : '';
+        return `<div class="envio-row">${chk}<div class="envio-row-info"><div class="envio-cliente">${it.cliente} · ${it.mama}</div><div class="envio-prod">${it.prod}${npedHtml}</div>${precio}</div></div>`;
+      }).join('');
+      const hoy = new Date().toISOString().split('T')[0];
+      const despachoBar = esCOPY ? `<div class="despacho-bar"><label>Fecha de despacho</label><input type="date" id="despacho-fecha" value="${hoy}"><button class="btn-despacho" onclick="confirmarDespachoFn()">Confirmar despacho</button></div>` : '';
+      return `<div class="envio-group"><div class="envio-prov">${prov}</div>${itemsHtml}${despachoBar}</div>`;
+    }).join('');
+  }
+
+  // Historial de despachos COPY
+  const despachos = getDespachos().filter(d => d.proveedor === 'COPY');
+  if (despachos.length) {
+    html += `<div class="historial-titulo">Historial de despachos COPY</div>`;
+    html += despachos.map(d => {
+      const fechaFmt = d.fecha ? new Date(d.fecha + 'T12:00').toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit', year:'numeric'}) : '—';
+      const totalFmt = fmt(d.total || 0);
+      const pagoClass = d.pago === 'realizado' ? 'realizado' : 'pendiente';
+      return `<div class="despacho-card">
+        <div class="despacho-card-head">
+          <div><span class="despacho-card-fecha">${fechaFmt}</span><span class="despacho-card-meta">${d.items.length} producto${d.items.length !== 1 ? 's' : ''} · ${totalFmt}</span></div>
+          <div class="despacho-card-acciones">
+            <select class="despacho-pago-sel ${pagoClass}" onchange="cambiarPagoDespacho('${d.id}',this.value)">
+              <option value="pendiente" ${d.pago==='pendiente'?'selected':''}>Pago pendiente</option>
+              <option value="realizado" ${d.pago==='realizado'?'selected':''}>Pago realizado</option>
+            </select>
+            <button class="btn-del-despacho" onclick="eliminarDespacho('${d.id}')">Eliminar</button>
+          </div>
+        </div>
+        <div class="despacho-card-body">
+          ${d.items.map(it => {
+            const npedHtml = it.nped ? `<span style="font-size:10px;background:#d4c8bf;color:#3a2e2a;border-radius:4px;padding:1px 5px;margin-left:5px;font-weight:600;">#${it.nped}</span>` : '';
+            return `<div class="despacho-item">
+              <div class="despacho-item-left">
+                <span class="despacho-item-cliente">${it.cliente} · ${it.mama}</span>
+                <span class="despacho-item-prod">${it.prod}${npedHtml}</span>
+              </div>
+              <span class="despacho-item-precio">${fmt(it.precio)}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  el.innerHTML = html;
 }
 
 // ── EXCEL ──
