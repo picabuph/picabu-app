@@ -134,6 +134,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 /* CARD CLIENTE */
 .c-card { background:var(--white); border:1px solid var(--border); border-radius:14px; margin-bottom:8px; }
 .c-card.drag-over { border-color:var(--rosa); border-style:dashed; }
+.c-card.drag-active { outline:2px solid var(--rosa-d,#c97); outline-offset:2px; opacity:0.75; }
 .c-header { display:flex; align-items:center; justify-content:space-between; padding:7px 14px; gap:10px; border-bottom:1px solid var(--border); }
 .drag-handle { color:var(--muted); cursor:grab; font-size:16px; flex-shrink:0; user-select:none; }
 .c-nombre { font-family:'Yeseva One',serif; font-size:15px; color:var(--marron-d); display:inline; }
@@ -1884,8 +1885,6 @@ function onDropProd(e,ci,pi) {
   if(t==='Diseño') renderDiseno(); else renderPedidos();
 }
 
-// ── PRÓXIMO ENVÍO ──
-function renderEnvio() {
 // ── DESPACHOS ──
 function getDespachos() { try { return JSON.parse(localStorage.getItem('picabu_despachos')||'[]'); } catch(e) { return []; } }
 function saveDespachos(arr) { localStorage.setItem('picabu_despachos', JSON.stringify(arr)); }
@@ -2739,9 +2738,9 @@ function renderSesionesAngie() {
     if (c.tareaVideoPendiente&&!c.tareaVideoHecho&&!c.sinVideo&&!c.videoSinGrabar) return false;
     return true;
   };
+  const activas=_eqSesiones.filter(c=>!estaTerminado(c));
+  const terminadas=_eqSesiones.filter(c=>estaTerminado(c));
   const ordenadas=eq_getSesionesOrdenadas();
-  const activas=ordenadas.filter(c=>!estaTerminado(c));
-  const terminadas=ordenadas.filter(c=>estaTerminado(c));
   // Alerta sin respuesta
   const alertas=_eqSesiones.filter(c=>c.estado==='pendiente_cliente'&&c.fechaEnvioGaleria&&eq_diasDesde(c.fechaEnvioGaleria)>=cfg.diasAlertaSinRespuesta);
   if (alertaEl) {
@@ -2753,7 +2752,8 @@ function renderSesionesAngie() {
     ?`<span class="eq-sync-dot"></span>Sincronizado ${_eqLastSync.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}`
     :'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#ccc;margin-right:4px;vertical-align:middle;"></span>Conectando con Firebase...';
   let html=`<div class="eq-sync-bar">${syncTxt}</div>`;
-  html+=activas.map(c=>renderCardEq(c,_eqSesiones.indexOf(c),false)).join('');
+  const activasOrdenadas=ordenadas.filter(c=>!estaTerminado(c));
+  html+=activasOrdenadas.map(c=>renderCardEq(c,_eqSesiones.indexOf(c),false)).join('');
   if (terminadas.length) {
     html+=`<hr class="eq-seccion-sep"><div class="eq-seccion-header">
       <div class="eq-seccion-titulo">Trabajos terminados</div>
@@ -2765,18 +2765,48 @@ function renderSesionesAngie() {
   if (!activas.length&&!terminadas.length) html+='<div class="empty">No hay sesiones activas.</div>';
   listaEl.innerHTML=html;
   _eqSesiones.forEach((_,i)=>fillEqPopOpts(i,''));
+  // Touch drag para móvil
+  const listaContainerEq=document.getElementById('lista-sesiones-angie');
+  if (listaContainerEq && !listaContainerEq._eqTouchDragInit) {
+    listaContainerEq._eqTouchDragInit=true;
+    eq_initTouchDrag(listaContainerEq);
+  }
 }
 
 // ─ Orden manual de sesiones ─
 let _eqIcalCache = [];
-let _eqManualOrder = JSON.parse(localStorage.getItem('eq_sesiones_order')||'[]');
+let _eqManualOrder = []; // solo en memoria — auto-sort al recargar
 let _eqDragId = null;
+
+const _EQ_ESTADO_PRIO = { edicion_renu:0, edicion_terminada:1, para_subir:2, subidas:3, pendiente_cliente:4, galeria_pendiente:5 };
+function _eqFechaSort(c) {
+  if (c.fechaLimite) return c.fechaLimite;
+  if (c.fechaConfirmacion) return c.fechaConfirmacion;
+  if (c.fechaEnvioGaleria) return c.fechaEnvioGaleria;
+  if (c.fechaSesion) return c.fechaSesion;
+  return '9999-99-99';
+}
+function eq_sortPorPrioridad(lista) {
+  return [...lista].sort((a, b) => {
+    const pa = _EQ_ESTADO_PRIO[a.estado] ?? 9, pb = _EQ_ESTADO_PRIO[b.estado] ?? 9;
+    if (pa !== pb) return pa - pb;
+    return _eqFechaSort(a).localeCompare(_eqFechaSort(b));
+  });
+}
 function eq_getSesionesOrdenadas() {
-  if (!_eqManualOrder.length) return _eqSesiones;
+  const estaTerminado = c => {
+    if (c.estado !== 'subidas') return false;
+    if (c.tieneProductos && !c.tareaVideoDisparada) return false;
+    if (c.tareaVideoPendiente && !c.tareaVideoHecho && !c.sinVideo && !c.videoSinGrabar) return false;
+    return true;
+  };
+  const activas = _eqSesiones.filter(c => !estaTerminado(c));
+  const terminadas = _eqSesiones.filter(c => estaTerminado(c));
+  if (!_eqManualOrder.length) return [...eq_sortPorPrioridad(activas), ...terminadas];
   const ordered = [];
-  _eqManualOrder.forEach(id => { const s=_eqSesiones.find(c=>c.id===id); if(s) ordered.push(s); });
-  _eqSesiones.forEach(c => { if(!_eqManualOrder.includes(c.id)) ordered.push(c); });
-  return ordered;
+  _eqManualOrder.forEach(id => { const s = activas.find(c => c.id === id); if (s) ordered.push(s); });
+  activas.forEach(c => { if (!_eqManualOrder.includes(c.id)) ordered.push(c); });
+  return [...ordered, ...terminadas];
 }
 function eqDragStart(e, id) { _eqDragId=id; e.dataTransfer.effectAllowed='move'; }
 function eqDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
@@ -2784,12 +2814,87 @@ function eqDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
 function eqDrop(e, targetId) {
   e.preventDefault(); e.currentTarget.classList.remove('drag-over');
   if (!_eqDragId || _eqDragId===targetId) return;
-  const display = eq_getSesionesOrdenadas().map(c=>c.id);
+  const estaTerminado = c => {
+    if (c.estado !== 'subidas') return false;
+    if (c.tieneProductos && !c.tareaVideoDisparada) return false;
+    if (c.tareaVideoPendiente && !c.tareaVideoHecho && !c.sinVideo && !c.videoSinGrabar) return false;
+    return true;
+  };
+  const activas = _eqSesiones.filter(c => !estaTerminado(c));
+  const display = (_eqManualOrder.length
+    ? (() => { const o=[]; _eqManualOrder.forEach(id=>{const s=activas.find(c=>c.id===id);if(s)o.push(s);}); activas.forEach(c=>{if(!_eqManualOrder.includes(c.id))o.push(c);}); return o; })()
+    : eq_sortPorPrioridad(activas)
+  ).map(c => c.id);
   const fi=display.indexOf(_eqDragId), ti=display.indexOf(targetId);
   if (fi===-1||ti===-1) return;
   display.splice(fi,1); display.splice(ti,0,_eqDragId);
-  _eqManualOrder=display; localStorage.setItem('eq_sesiones_order',JSON.stringify(_eqManualOrder));
+  _eqManualOrder=display;
   renderSesionesAngie(); _eqDragId=null;
+}
+
+// ─ Touch drag (mobile) para sesiones ─
+let _eqTdTimer=null, _eqTdCard=null, _eqTdActive=false, _eqTdSX=0, _eqTdSY=0;
+function eq_initTouchDrag(container) {
+  container.addEventListener('touchstart', _eqTdStart, { passive:true });
+  container.addEventListener('touchmove', _eqTdMove, { passive:false });
+  container.addEventListener('touchend', _eqTdEnd);
+  container.addEventListener('touchcancel', _eqTdCancel);
+}
+function _eqTdStart(e) {
+  const card = e.target.closest('.c-card');
+  if (!card) return;
+  if (e.target.closest('button,input,select,textarea,a,.estado-wrap,.estado-pop,.c-acciones,.eq-btn-accion,.eq-pop,.eq-pop-wrap')) return;
+  _eqTdSX=e.touches[0].clientX; _eqTdSY=e.touches[0].clientY;
+  _eqTdCard=card;
+  _eqTdTimer=setTimeout(()=>{
+    if (!_eqTdCard) return;
+    _eqTdActive=true;
+    _eqTdCard.classList.add('drag-active');
+    if (navigator.vibrate) navigator.vibrate(35);
+  }, 500);
+}
+function _eqTdMove(e) {
+  if (_eqTdTimer && !_eqTdActive) {
+    const dx=Math.abs(e.touches[0].clientX-_eqTdSX), dy=Math.abs(e.touches[0].clientY-_eqTdSY);
+    if (dx>8||dy>8) { clearTimeout(_eqTdTimer); _eqTdTimer=null; _eqTdCard=null; }
+    return;
+  }
+  if (!_eqTdActive||!_eqTdCard) return;
+  e.preventDefault();
+  const t=e.touches[0];
+  _eqTdCard.style.visibility='hidden';
+  const el=document.elementFromPoint(t.clientX, t.clientY);
+  _eqTdCard.style.visibility='';
+  document.querySelectorAll('.c-card.drag-over').forEach(c=>c.classList.remove('drag-over'));
+  const target=el?.closest('.c-card');
+  if (target&&target!==_eqTdCard) target.classList.add('drag-over');
+}
+function _eqTdEnd(e) {
+  clearTimeout(_eqTdTimer); _eqTdTimer=null;
+  if (!_eqTdActive||!_eqTdCard) { _eqTdActive=false; _eqTdCard=null; return; }
+  const t=e.changedTouches[0];
+  _eqTdCard.style.visibility='hidden';
+  const el=document.elementFromPoint(t.clientX, t.clientY);
+  _eqTdCard.style.visibility='';
+  _eqTdCard.classList.remove('drag-active');
+  document.querySelectorAll('.c-card.drag-over').forEach(c=>c.classList.remove('drag-over'));
+  const target=el?.closest('.c-card');
+  if (target&&target!==_eqTdCard) {
+    const srcId=_eqTdCard.dataset.id, tgtId=target.dataset.id;
+    if (srcId&&tgtId) {
+      _eqDragId=srcId;
+      const fakeEvt={preventDefault:()=>{},currentTarget:{classList:{remove:()=>{}}}};
+      eqDrop(fakeEvt, tgtId);
+      _eqDragId=null;
+    }
+  }
+  _eqTdActive=false; _eqTdCard=null;
+}
+function _eqTdCancel() {
+  clearTimeout(_eqTdTimer); _eqTdTimer=null;
+  if (_eqTdCard) _eqTdCard.classList.remove('drag-active');
+  document.querySelectorAll('.c-card.drag-over').forEach(c=>c.classList.remove('drag-over'));
+  _eqTdActive=false; _eqTdCard=null;
 }
 
 // ─ Terminados colapsable ─
