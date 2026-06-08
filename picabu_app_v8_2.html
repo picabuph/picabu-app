@@ -414,6 +414,15 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .eq-fl label { display:block; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:5px; font-weight:500; }
 .eq-fl input { width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; font-family:'Montserrat',sans-serif; background:var(--bg); color:var(--text); outline:none; }
 
+/* ── SESIONES TAB — override para igualar diseño equipo app ── */
+#tab-sesiones .c-card { border-radius:12px; overflow:hidden; transition:opacity 0.2s; }
+#tab-sesiones .c-card.drag-active { outline:2px solid var(--rosa-d); outline-offset:2px; opacity:0.75; }
+#tab-sesiones .c-card.drag-over { border:2px dashed var(--rosa-d) !important; border-top:2px dashed var(--rosa-d) !important; opacity:0.7; }
+#tab-sesiones .c-header { padding:7px 12px; gap:8px; border-bottom:none; justify-content:flex-start; }
+#tab-sesiones .estado-wrap { width:auto; display:inline-block; }
+#tab-sesiones .estado-btn { display:inline-flex; align-items:center; gap:5px; padding:5px 10px; letter-spacing:0.5px; min-width:unset; width:auto; line-height:1.2; color:#3a2e2a; }
+#tab-sesiones .c-footer { padding:7px 12px; }
+
 </style>
 </head>
 <body>
@@ -926,6 +935,59 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
       <button onclick="cerrarEqModalCF()" style="padding:8px 18px;background:none;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;font-family:'Montserrat',sans-serif;color:var(--muted);">Cancelar</button>
       <button onclick="confirmarFotosEq()" style="padding:8px 18px;background:var(--marron-d);color:var(--rosa-l);border:none;border-radius:8px;cursor:pointer;font-size:12px;font-family:'Montserrat',sans-serif;">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR SESIÓN (pestaña Sesiones) -->
+<div class="eq-modal-overlay" id="eq-modal-editar" onclick="if(event.target===this)eq_cerrarModalEditar()">
+  <div class="eq-mbox" style="max-width:440px;max-height:90vh;overflow-y:auto;">
+    <div class="eq-mbox-title">Editar sesión</div>
+    <div class="eq-mbox-sub" id="eq-edit-sub"></div>
+    <div class="eq-fl"><label>Nombre del bebé / sesión</label>
+      <input id="eq-edit-bebe" type="text" placeholder="Ej: Emilia" autocomplete="off"></div>
+    <div class="eq-fl"><label>Nombre de la mamá</label>
+      <input id="eq-edit-mama" type="text" placeholder="Ej: Laura García" autocomplete="off"></div>
+    <div class="eq-fl"><label>Fecha de sesión</label>
+      <input id="eq-edit-fecha-sesion" type="date"></div>
+    <div class="eq-fl"><label>Paquete</label>
+      <select id="eq-edit-paquete">
+        <option value="">— sin especificar —</option>
+        <option value="petite">Petite (10 fotos)</option>
+        <option value="premium">Premium (20 fotos)</option>
+        <option value="gold">Gold (30 fotos)</option>
+        <option value="petite familiar">Petite Familiar (15 fotos)</option>
+        <option value="premium familia">Premium Familia (25 fotos)</option>
+        <option value="petite lifestyle">Petite Lifestyle (25 fotos)</option>
+        <option value="premium lifestyle">Premium Lifestyle (50 fotos)</option>
+        <option value="video backstage">Video de backstage</option>
+      </select></div>
+    <div class="eq-fl"><label>Estado</label>
+      <select id="eq-edit-estado" onchange="eq_sincEstadoModal()">
+        <option value="galeria_pendiente">Galería pendiente</option>
+        <option value="pendiente_cliente">Pendiente cliente</option>
+        <option value="edicion_renu">Edición</option>
+        <option value="edicion_terminada">Edición terminada</option>
+        <option value="para_subir">Para subir</option>
+        <option value="subidas">Subidas</option>
+      </select></div>
+    <div class="eq-fl" id="eq-edit-wrap-conf"><label>Fecha confirmación de fotos</label>
+      <input id="eq-edit-fecha-conf" type="date"></div>
+    <div class="eq-fl" id="eq-edit-wrap-limite"><label>Fecha límite entrega (30 días)</label>
+      <input id="eq-edit-fecha-limite" type="date"></div>
+    <div class="eq-fl" id="eq-edit-wrap-cant"><label>Cantidad de fotos</label>
+      <input id="eq-edit-cant" type="number" placeholder="Ej: 20" min="1"></div>
+    <div class="eq-fl"><label>Notas visibles</label>
+      <textarea id="eq-edit-notas" rows="3" placeholder="Ej: PRODUCTOS — prioridad entrega."></textarea></div>
+    <div class="eq-fl"><label>Tiene productos encargados</label>
+      <select id="eq-edit-prod">
+        <option value="no">No</option>
+        <option value="si">Sí</option>
+      </select></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap;">
+      <button onclick="eq_eliminarSesion()" style="padding:8px 16px;background:none;border:1px solid #c97b7b;border-radius:8px;cursor:pointer;font-size:12px;font-family:'Montserrat',sans-serif;color:#c97b7b;margin-right:auto;">Eliminar</button>
+      <button onclick="eq_cerrarModalEditar()" style="padding:8px 18px;background:none;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;font-family:'Montserrat',sans-serif;color:var(--muted);">Cancelar</button>
+      <button onclick="eq_guardarSesion()" style="padding:8px 18px;background:var(--marron-d);color:var(--rosa-l);border:none;border-radius:8px;cursor:pointer;font-size:12px;font-family:'Montserrat',sans-serif;">Guardar</button>
     </div>
   </div>
 </div>
@@ -2586,6 +2648,67 @@ function eq_save() {
   if (typeof window.saveEquipoSesiones==='function') window.saveEquipoSesiones(_eqSesiones);
 }
 
+// ─ Modal editar sesión ─
+let _eqEditIdx = null;
+function eq_abrirModalEditar(idx) {
+  const c = _eqSesiones[idx]; if (!c) return;
+  _eqEditIdx = idx;
+  document.getElementById('eq-edit-sub').textContent = `${c.bebe||''} — ${c.mama||''}`;
+  document.getElementById('eq-edit-bebe').value = c.bebe||'';
+  document.getElementById('eq-edit-mama').value = c.mama||'';
+  document.getElementById('eq-edit-fecha-sesion').value = c.fechaSesion||'';
+  document.getElementById('eq-edit-paquete').value = c.paquete||'';
+  document.getElementById('eq-edit-estado').value = c.estado||'galeria_pendiente';
+  document.getElementById('eq-edit-fecha-conf').value = c.fechaConfirmacion||'';
+  document.getElementById('eq-edit-fecha-limite').value = c.fechaLimite||'';
+  document.getElementById('eq-edit-cant').value = c.cantFotos||'';
+  document.getElementById('eq-edit-notas').value = c.notas||'';
+  document.getElementById('eq-edit-prod').value = c.tieneProductos ? 'si' : 'no';
+  eq_sincEstadoModal();
+  document.getElementById('eq-modal-editar').classList.add('open');
+}
+function eq_cerrarModalEditar() {
+  document.getElementById('eq-modal-editar').classList.remove('open');
+  _eqEditIdx = null;
+}
+function eq_sincEstadoModal() {
+  const est = document.getElementById('eq-edit-estado').value;
+  const conFechas = ['edicion_renu','edicion_terminada','para_subir','subidas'].includes(est);
+  document.getElementById('eq-edit-wrap-conf').style.display = conFechas ? '' : 'none';
+  document.getElementById('eq-edit-wrap-limite').style.display = conFechas ? '' : 'none';
+  document.getElementById('eq-edit-wrap-cant').style.display = conFechas ? '' : 'none';
+}
+function eq_guardarSesion() {
+  if (_eqEditIdx === null) return;
+  const bebe = document.getElementById('eq-edit-bebe').value.trim();
+  if (!bebe) { document.getElementById('eq-edit-bebe').focus(); return; }
+  const c = _eqSesiones[_eqEditIdx];
+  Object.assign(c, {
+    bebe,
+    mama: document.getElementById('eq-edit-mama').value.trim(),
+    fechaSesion: document.getElementById('eq-edit-fecha-sesion').value||null,
+    paquete: document.getElementById('eq-edit-paquete').value||null,
+    estado: document.getElementById('eq-edit-estado').value,
+    notas: document.getElementById('eq-edit-notas').value.trim(),
+    cantFotos: document.getElementById('eq-edit-cant').value ? parseInt(document.getElementById('eq-edit-cant').value) : null,
+    fechaConfirmacion: document.getElementById('eq-edit-fecha-conf').value||null,
+    fechaLimite: document.getElementById('eq-edit-fecha-limite').value||null,
+    tieneProductos: document.getElementById('eq-edit-prod').value === 'si',
+  });
+  eq_cerrarModalEditar();
+  eq_save();
+  renderSesionesAngie();
+}
+function eq_eliminarSesion() {
+  if (_eqEditIdx === null) return;
+  const c = _eqSesiones[_eqEditIdx];
+  if (!confirm(`¿Eliminar a ${c.bebe} de la lista?`)) return;
+  _eqSesiones.splice(_eqEditIdx, 1);
+  eq_cerrarModalEditar();
+  eq_save();
+  renderSesionesAngie();
+}
+
 // ─ Dropdown de estado ─
 let _activeEqPop = null;
 function toggleEqPop(idx) {
@@ -2717,7 +2840,10 @@ function renderCardEq(c, idx, compacto) {
           ${c.sinVideo?'<span class="eq-badge-video" style="background:var(--arena-l);color:var(--muted);">— Sin video</span>':''}
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">${dropdown}</div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+        ${dropdown}
+        <button onclick="event.stopPropagation();eq_abrirModalEditar(${idx})" title="Editar sesión" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;padding:4px;line-height:1;border-radius:6px;">✏️</button>
+      </div>
     </div>
     ${info?`<div class="eq-info-row">${info}</div>`:''}
     ${alerta60}
