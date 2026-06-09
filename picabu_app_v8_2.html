@@ -168,7 +168,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .estado-pop { display:none; position:absolute; right:0; top:calc(100% + 4px); background:var(--white); border:1px solid var(--border); border-radius:10px; z-index:500; width:210px; box-shadow:0 6px 24px rgba(58,46,42,0.15); }
 .estado-pop.open { display:block; }
 .estado-pop-inp { width:100%; padding:9px 12px; border:none; border-bottom:1px solid var(--border); font-size:12px; font-family:'Montserrat',sans-serif; outline:none; background:var(--bg); border-radius:10px 10px 0 0; }
-.estado-opts { max-height:200px; overflow-y:auto; }
+.estado-opts { max-height:calc(70vh - 44px); overflow-y:auto; }
 .estado-opt { padding:9px 12px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:8px; color:var(--text); }
 .estado-opt:hover { background:var(--arena-l); }
 .estado-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
@@ -416,14 +416,19 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .eq-fl label { display:block; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:5px; font-weight:500; }
 .eq-fl input { width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; font-family:'Montserrat',sans-serif; background:var(--bg); color:var(--text); outline:none; }
 
+/* ── GRUPO LABELS (sesiones) ── */
+.grupo-label { font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); font-weight:600; padding:8px 2px 3px; display:flex; align-items:center; gap:8px; }
+.grupo-label::after { content:''; flex:1; height:1px; background:var(--border); opacity:0.7; }
+
 /* ── SESIONES TAB — override para igualar diseño equipo app ── */
-#tab-sesiones .c-card { border-radius:12px; overflow:hidden; transition:opacity 0.2s; }
+#tab-sesiones .c-card { border-radius:12px; overflow:hidden; transition:opacity 0.2s; margin-bottom:5px; }
 #tab-sesiones .c-card.drag-active { outline:2px solid var(--rosa-d); outline-offset:2px; opacity:0.75; }
 #tab-sesiones .c-card.drag-over { border:2px dashed var(--rosa-d) !important; border-top:2px dashed var(--rosa-d) !important; opacity:0.7; }
-#tab-sesiones .c-header { padding:7px 12px; gap:8px; border-bottom:none; justify-content:flex-start; }
+#tab-sesiones .c-header { padding:5px 10px; gap:8px; border-bottom:none; justify-content:flex-start; }
 #tab-sesiones .estado-wrap { width:auto; display:inline-block; }
 #tab-sesiones .estado-btn { display:inline-flex; align-items:center; gap:5px; padding:5px 10px; letter-spacing:0.5px; min-width:unset; width:auto; line-height:1.2; color:#3a2e2a; }
-#tab-sesiones .c-footer { padding:7px 12px; }
+#tab-sesiones .c-footer { padding:5px 10px; }
+#tab-sesiones .c-body { padding:0 10px 4px; }
 
 </style>
 </head>
@@ -2621,7 +2626,7 @@ function editarProdDB(i){
 const EQ_CONFIG_KEY = 'equipo_config';
 const EQ_CONFIG_DEFAULT = { diasAlertaSinRespuesta:15, diasLimiteEdicion:30, diasLimiteVideo:60, diasEstimadoGaleria:7,
   paquetes:{'petite familiar':15,'premium familia':25,'petite lifestyle':25,'premium lifestyle':50,'petite':10,'premium':20,'gold':30},
-  estadosCustom:[], estadosBuiltinOverrides:{} };
+  estadosCustom:[], estadosBuiltinOverrides:{}, estadosOrden:[] };
 function eq_getConfig() {
   try { return Object.assign({}, EQ_CONFIG_DEFAULT, JSON.parse(localStorage.getItem(EQ_CONFIG_KEY)||'{}')); }
   catch(e) { return Object.assign({}, EQ_CONFIG_DEFAULT); }
@@ -2631,8 +2636,26 @@ const EQ_LABEL_DEFAULT = { galeria_pendiente:'Galería pendiente', pendiente_cli
 function eq_getEstados() {
   const cfg = eq_getConfig(); const ov = cfg.estadosBuiltinOverrides||{};
   const builtin = Object.keys(EQ_BG_DEFAULT).map(id => ({ id, label:(ov[id]&&ov[id].label)||EQ_LABEL_DEFAULT[id], bg:(ov[id]&&ov[id].bg)||EQ_BG_DEFAULT[id] }));
-  const custom = (cfg.estadosCustom||[]).map(s=>({ id:s.id, label:s.label, bg:s.bg||'#e8e0d4' }));
-  return [...builtin, ...custom];
+  const custom = (cfg.estadosCustom||[]).map(s=>({ id:s.id, label:s.label, bg:s.bg||'#e8e0d4', grupo:s.grupo||null }));
+  const all = [...builtin, ...custom];
+  const orden = cfg.estadosOrden||[];
+  if (!orden.length) {
+    return [...all].sort((a,b)=>{ const pa=_EQ_ESTADO_PRIO_DEFAULT[a.id]??99, pb=_EQ_ESTADO_PRIO_DEFAULT[b.id]??99; return pa-pb; });
+  }
+  const ordered = []; orden.forEach(id=>{ const s=all.find(x=>x.id===id); if(s) ordered.push(s); });
+  all.forEach(s=>{ if(!orden.includes(s.id)) ordered.push(s); });
+  return ordered;
+}
+// Nombres de sección que se muestran como divisores en la lista
+const _EQ_SECCION_LABEL = {
+  edicion_renu: 'En edición',
+  edicion_terminada: 'Editadas',
+  pendiente_cliente: 'Pendiente cliente',
+  galeria_pendiente: 'Galería pendiente',
+  subidas: 'Subidas'
+};
+function _eqGetGrupoLabel(grupoKey) {
+  return _EQ_SECCION_LABEL[grupoKey] || EQ_LABEL_DEFAULT[grupoKey] || eq_getEstadoInfo(grupoKey).label;
 }
 function eq_getEstadoInfo(id) { return eq_getEstados().find(s=>s.id===id)||{id, label:id, bg:'#e8dad2'}; }
 function eq_hoy() { return new Date().toISOString().split('T')[0]; }
@@ -2731,7 +2754,10 @@ function toggleEqPop(idx) {
   if (opening) {
     const btn=pop.previousElementSibling;
     pop.style.position='fixed';
-    if (btn) { const r=btn.getBoundingClientRect(); const pH=244; const sB=window.innerHeight-r.bottom-8;
+    if (btn) { const r=btn.getBoundingClientRect();
+      const numStates=eq_getEstados().length;
+      const pH=Math.min(44+numStates*34,Math.round(window.innerHeight*0.7));
+      const sB=window.innerHeight-r.bottom-8;
       pop.style.top=(sB<pH?Math.max(4,r.top-pH-4):r.bottom+4)+'px'; pop.style.left=r.left+'px'; }
     fillEqPopOpts(idx,'');
   }
@@ -2891,7 +2917,16 @@ function renderSesionesAngie() {
     :'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#ccc;margin-right:4px;vertical-align:middle;"></span>Conectando con Firebase...';
   let html=`<div class="eq-sync-bar">${syncTxt}</div>`;
   const activasOrdenadas=ordenadas.filter(c=>!estaTerminado(c));
-  html+=activasOrdenadas.map(c=>renderCardEq(c,_eqSesiones.indexOf(c),false)).join('');
+  let _prevGrupoEq=null;
+  activasOrdenadas.forEach(c=>{
+    const gk=_eqGrupoKey(c.estado);
+    if(gk!==_prevGrupoEq){
+      if(_prevGrupoEq!==null) html+=`<div style="height:6px;"></div>`;
+      html+=`<div class="grupo-label"><span>${_eqGetGrupoLabel(gk)}</span></div>`;
+      _prevGrupoEq=gk;
+    }
+    html+=renderCardEq(c,_eqSesiones.indexOf(c),false);
+  });
   if (terminadas.length) {
     html+=`<hr class="eq-seccion-sep"><div class="eq-seccion-header">
       <div class="eq-seccion-titulo">Trabajos terminados</div>
@@ -2916,7 +2951,20 @@ let _eqIcalCache = [];
 let _eqManualOrder = []; // solo en memoria — auto-sort al recargar
 let _eqDragId = null;
 
-const _EQ_ESTADO_PRIO = { edicion_renu:0, edicion_terminada:1, para_subir:2, subidas:3, pendiente_cliente:4, galeria_pendiente:5 };
+// Los builtins SIEMPRE usan este orden fijo — no puede ser roto por config/localStorage
+// 0=En edición | 1=Editadas | 2=Pendiente cliente | 3=Galería pendiente | 4=Subidas
+const _EQ_ESTADO_PRIO_DEFAULT = { edicion_renu:0, edicion_terminada:1, para_subir:1, pendiente_cliente:2, galeria_pendiente:3, subidas:4 };
+function _eqGetEffectivePrio(estado) {
+  // Builtins: siempre orden fijo
+  if (_EQ_ESTADO_PRIO_DEFAULT[estado] !== undefined) return _EQ_ESTADO_PRIO_DEFAULT[estado];
+  // Custom con grupo: se ubica justo después de su estado ancla
+  const custom = (eq_getConfig().estadosCustom||[]).find(s => s.id === estado);
+  if (custom && custom.grupo && _EQ_ESTADO_PRIO_DEFAULT[custom.grupo] !== undefined) {
+    return _EQ_ESTADO_PRIO_DEFAULT[custom.grupo] + 0.5;
+  }
+  // Custom sin grupo o desconocido: al final
+  return 99;
+}
 function _eqFechaSort(c) {
   if (c.fechaLimite) return c.fechaLimite;
   if (c.fechaConfirmacion) return c.fechaConfirmacion;
@@ -2926,10 +2974,17 @@ function _eqFechaSort(c) {
 }
 function eq_sortPorPrioridad(lista) {
   return [...lista].sort((a, b) => {
-    const pa = _EQ_ESTADO_PRIO[a.estado] ?? 9, pb = _EQ_ESTADO_PRIO[b.estado] ?? 9;
+    const pa = _eqGetEffectivePrio(a.estado), pb = _eqGetEffectivePrio(b.estado);
     if (pa !== pb) return pa - pb;
     return _eqFechaSort(a).localeCompare(_eqFechaSort(b));
   });
+}
+// para_subir se agrupa con edicion_terminada → forman la sección "Editadas"
+const _EQ_BUILTIN_GRUPO_MAP = { para_subir: 'edicion_terminada' };
+function _eqGrupoKey(estado) {
+  if (_EQ_BUILTIN_GRUPO_MAP[estado]) return _EQ_BUILTIN_GRUPO_MAP[estado];
+  const custom = (eq_getConfig().estadosCustom||[]).find(s => s.id === estado);
+  return custom?.grupo || estado;
 }
 function eq_getSesionesOrdenadas() {
   const estaTerminado = c => {
