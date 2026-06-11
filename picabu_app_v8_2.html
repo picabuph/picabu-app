@@ -54,6 +54,15 @@
     catch(e) { console.warn("Firebase contactados:", e); }
   };
 
+  // ── EQUIPO/CONFIG — estados custom, overrides, orden (solo lectura) ──
+  const EQUIPO_CFG_REF = doc(db, "equipo", "config");
+  onSnapshot(EQUIPO_CFG_REF, snap => {
+    if (!snap.exists()) return;
+    const { _savedAt, ...remoteCfg } = snap.data();
+    localStorage.setItem('equipo_config', JSON.stringify(remoteCfg));
+    if (typeof renderSesionesAngie === 'function') renderSesionesAngie();
+  }, err => console.warn('[equipo config]', err));
+
   // ── EQUIPO/SESIONES (video Renu) ──
   let _equipoSesiones = [];
   const EQUIPO_REF = doc(db, "equipo", "sesiones");
@@ -2766,7 +2775,9 @@ function toggleEqPop(idx) {
 }
 function fillEqPopOpts(idx,q) {
   const cont=document.getElementById(`eqpop-opts-${idx}`); if (!cont) return;
+  const wfPrio=s=>_EQ_WORKFLOW_ORDER[s.id]!==undefined?_EQ_WORKFLOW_ORDER[s.id]:(s.grupo&&_EQ_WORKFLOW_ORDER[s.grupo]!==undefined?_EQ_WORKFLOW_ORDER[s.grupo]+0.5:99);
   cont.innerHTML=eq_getEstados().filter(s=>s.label.toLowerCase().includes((q||'').toLowerCase()))
+    .sort((a,b)=>wfPrio(a)-wfPrio(b))
     .map(s=>`<div class="estado-opt" onmousedown="selEqEstado(${idx},'${s.id}')"><div class="estado-dot" style="background:${s.bg}"></div>${s.label}</div>`).join('');
 }
 function selEqEstado(idx, nuevoEstado) {
@@ -2954,6 +2965,8 @@ let _eqDragId = null;
 // Los builtins SIEMPRE usan este orden fijo — no puede ser roto por config/localStorage
 // 0=En edición | 1=Editadas | 2=Pendiente cliente | 3=Galería pendiente | 4=Subidas
 const _EQ_ESTADO_PRIO_DEFAULT = { edicion_renu:0, edicion_terminada:1, para_subir:1, pendiente_cliente:2, galeria_pendiente:3, subidas:4 };
+// Orden cronológico del flujo real — solo para el desplegable de cambio de estado
+const _EQ_WORKFLOW_ORDER = { galeria_pendiente:0, pendiente_cliente:1, edicion_renu:2, edicion_terminada:3, para_subir:4, subidas:5 };
 function _eqGetEffectivePrio(estado) {
   // Builtins: siempre orden fijo
   if (_EQ_ESTADO_PRIO_DEFAULT[estado] !== undefined) return _EQ_ESTADO_PRIO_DEFAULT[estado];
