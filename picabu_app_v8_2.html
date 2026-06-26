@@ -2671,7 +2671,7 @@ function eq_getEstadoInfo(id) { return eq_getEstados().find(s=>s.id===id)||{id, 
 function eq_hoy() { return new Date().toISOString().split('T')[0]; }
 function eq_fmt(f) { if (!f) return '—'; const [y,m,d]=f.split('-'); return `${d}/${m}/${y}`; }
 function eq_calcLimite(fecha,dias=30) { const d=new Date(fecha); d.setDate(d.getDate()+dias); return d.toISOString().split('T')[0]; }
-function eq_diasDesde(f) { if (!f) return 0; const d=new Date(f),h=new Date(); h.setHours(0,0,0,0);d.setHours(0,0,0,0); return Math.floor((h-d)/86400000); }
+function eq_diasDesde(f) { if (!f) return 0; const [y,m,d]=f.split('-').map(Number); const fecha=new Date(y,m-1,d); const hoy=new Date(); hoy.setHours(0,0,0,0); return Math.floor((hoy-fecha)/86400000); }
 function eq_diasHasta(f) { if (!f) return null; const d=new Date(f),h=new Date(); h.setHours(0,0,0,0);d.setHours(0,0,0,0); return Math.floor((d-h)/86400000); }
 function eq_fotosDelPaquete(paq) {
   if (!paq) return null; const k=paq.toLowerCase().trim();
@@ -2854,7 +2854,8 @@ function renderCardEq(c, idx, compacto) {
     if (c.estado==='pendiente_cliente'&&c.fechaEnvioGaleria) {
       const dEsp=eq_diasDesde(c.fechaEnvioGaleria);
       const eC=dEsp>=cfg.diasAlertaSinRespuesta?'#c94040':dEsp>=7?'#e0a030':'#5cad80';
-      info+=`<div class="eq-info-item"><span class="eq-info-label">Galería enviada hace</span><span class="eq-info-val" style="color:${eC};font-weight:600;">${dEsp} ${dEsp===1?'día':'días'}</span></div>`;
+      const dTxt=dEsp===0?'hoy':`hace ${dEsp} ${dEsp===1?'día':'días'}`;
+      info+=`<div class="eq-info-item"><span class="eq-info-label">Galería enviada</span><span class="eq-info-val" style="color:${eC};font-weight:600;">${dTxt}</span></div>`;
     }
   } else if (c.cantFotos) {
     let fL=`${c.cantFotos} fotos`; if (fotosExtras>0) fL+=` (${fotosBase} + ${fotosExtras} extra)`;
