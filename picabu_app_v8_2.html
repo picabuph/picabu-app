@@ -426,8 +426,8 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .eq-fl input { width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; font-family:'Montserrat',sans-serif; background:var(--bg); color:var(--text); outline:none; }
 
 /* ── GRUPO LABELS (sesiones) ── */
-.grupo-label { font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); font-weight:600; padding:8px 2px 3px; display:flex; align-items:center; gap:8px; }
-.grupo-label::after { content:''; flex:1; height:1px; background:var(--border); opacity:0.7; }
+.grupo-label { font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--marron); font-weight:700; padding:14px 4px 5px; display:flex; align-items:center; gap:8px; }
+.grupo-label::after { content:''; flex:1; height:1px; background:var(--marron); opacity:0.25; }
 
 /* ── SESIONES TAB — override para igualar diseño equipo app ── */
 #tab-sesiones .c-card { border-radius:12px; overflow:hidden; transition:opacity 0.2s; margin-bottom:5px; }
@@ -2661,6 +2661,7 @@ const _EQ_SECCION_LABEL = {
   edicion_terminada: 'Editadas',
   pendiente_cliente: 'Pendiente cliente',
   galeria_pendiente: 'Galería pendiente',
+  proximas: 'Próximas sesiones',
   subidas: 'Subidas'
 };
 function _eqGetGrupoLabel(grupoKey) {
@@ -2796,6 +2797,7 @@ function selEqEstado(idx, nuevoEstado) {
   }
   c.estado=nuevoEstado;
   if (nuevoEstado==='subidas') c.fechaSubida=eq_hoy();
+  if (nuevoEstado==='pendiente_cliente' && !c.fechaEnvioGaleria) c.fechaEnvioGaleria=eq_hoy();
   eq_save(); renderSesionesAngie();
 }
 function eqAutoLimite() {
@@ -2848,6 +2850,11 @@ function renderCardEq(c, idx, compacto) {
       const eF=eq_calcLimite(c.fechaSesion,cfg.diasEstimadoGaleria); const eD=eq_diasHasta(eF);
       const eC=eD<0?'#c94040':eD<=2?'#e0a030':'#5cad80';
       info+=`<div class="eq-info-item"><span class="eq-info-label">Entrega galería</span><span class="eq-info-val" style="color:${eC}">${eq_fmt(eF)}${eD<0?' <span style="font-size:10px">(atrasada)</span>':eD===0?' <span style="font-size:10px">(hoy)</span>':''}</span></div>`;
+    }
+    if (c.estado==='pendiente_cliente'&&c.fechaEnvioGaleria) {
+      const dEsp=eq_diasDesde(c.fechaEnvioGaleria);
+      const eC=dEsp>=cfg.diasAlertaSinRespuesta?'#c94040':dEsp>=7?'#e0a030':'#5cad80';
+      info+=`<div class="eq-info-item"><span class="eq-info-label">Galería enviada hace</span><span class="eq-info-val" style="color:${eC};font-weight:600;">${dEsp} ${dEsp===1?'día':'días'}</span></div>`;
     }
   } else if (c.cantFotos) {
     let fL=`${c.cantFotos} fotos`; if (fotosExtras>0) fL+=` (${fotosBase} + ${fotosExtras} extra)`;
@@ -2930,9 +2937,9 @@ function renderSesionesAngie() {
   const activasOrdenadas=ordenadas.filter(c=>!estaTerminado(c));
   let _prevGrupoEq=null;
   activasOrdenadas.forEach(c=>{
-    const gk=_eqGrupoKey(c.estado);
+    const gk=_eqGrupoKey(c);
     if(gk!==_prevGrupoEq){
-      if(_prevGrupoEq!==null) html+=`<div style="height:6px;"></div>`;
+      if(_prevGrupoEq!==null) html+=`<div style="height:14px;"></div>`;
       html+=`<div class="grupo-label"><span>${_eqGetGrupoLabel(gk)}</span></div>`;
       _prevGrupoEq=gk;
     }
@@ -2963,19 +2970,24 @@ let _eqManualOrder = []; // solo en memoria — auto-sort al recargar
 let _eqDragId = null;
 
 // Los builtins SIEMPRE usan este orden fijo — no puede ser roto por config/localStorage
-// 0=En edición | 1=Editadas | 2=Pendiente cliente | 3=Galería pendiente | 4=Subidas
-const _EQ_ESTADO_PRIO_DEFAULT = { edicion_renu:0, edicion_terminada:1, para_subir:1, pendiente_cliente:2, galeria_pendiente:3, subidas:4 };
+// 0=En edición | 1=Editadas | 2=Galería pendiente | 3=Pendiente cliente | 4=Subidas
+const _EQ_ESTADO_PRIO_DEFAULT = { edicion_renu:0, edicion_terminada:1, para_subir:1, galeria_pendiente:2, pendiente_cliente:3, subidas:4 };
 // Orden cronológico del flujo real — solo para el desplegable de cambio de estado
 const _EQ_WORKFLOW_ORDER = { galeria_pendiente:0, pendiente_cliente:1, edicion_renu:2, edicion_terminada:3, para_subir:4, subidas:5 };
-function _eqGetEffectivePrio(estado) {
-  // Builtins: siempre orden fijo
-  if (_EQ_ESTADO_PRIO_DEFAULT[estado] !== undefined) return _EQ_ESTADO_PRIO_DEFAULT[estado];
-  // Custom con grupo: se ubica justo después de su estado ancla
+function _eqGetEffectivePrio(c) {
+  const estado = c.estado;
+  if (_EQ_ESTADO_PRIO_DEFAULT[estado] !== undefined) {
+    let prio = _EQ_ESTADO_PRIO_DEFAULT[estado];
+    if (estado === 'galeria_pendiente' && c.fechaSesion) {
+      const hoy = new Date().toISOString().slice(0, 10);
+      if (c.fechaSesion > hoy) return _EQ_ESTADO_PRIO_DEFAULT.pendiente_cliente + 0.5;
+    }
+    return prio;
+  }
   const custom = (eq_getConfig().estadosCustom||[]).find(s => s.id === estado);
   if (custom && custom.grupo && _EQ_ESTADO_PRIO_DEFAULT[custom.grupo] !== undefined) {
     return _EQ_ESTADO_PRIO_DEFAULT[custom.grupo] + 0.5;
   }
-  // Custom sin grupo o desconocido: al final
   return 99;
 }
 function _eqFechaSort(c) {
@@ -2987,15 +2999,26 @@ function _eqFechaSort(c) {
 }
 function eq_sortPorPrioridad(lista) {
   return [...lista].sort((a, b) => {
-    const pa = _eqGetEffectivePrio(a.estado), pb = _eqGetEffectivePrio(b.estado);
+    const pa = _eqGetEffectivePrio(a), pb = _eqGetEffectivePrio(b);
     if (pa !== pb) return pa - pb;
+    // pendiente_cliente: la que lleva más días esperando va primero
+    if (a.estado === 'pendiente_cliente' && b.estado === 'pendiente_cliente') {
+      const fa = a.fechaEnvioGaleria || '9999-99-99';
+      const fb = b.fechaEnvioGaleria || '9999-99-99';
+      return fa.localeCompare(fb);
+    }
     return _eqFechaSort(a).localeCompare(_eqFechaSort(b));
   });
 }
 // para_subir se agrupa con edicion_terminada → forman la sección "Editadas"
 const _EQ_BUILTIN_GRUPO_MAP = { para_subir: 'edicion_terminada' };
-function _eqGrupoKey(estado) {
+function _eqGrupoKey(c) {
+  const estado = c.estado;
   if (_EQ_BUILTIN_GRUPO_MAP[estado]) return _EQ_BUILTIN_GRUPO_MAP[estado];
+  if (estado === 'galeria_pendiente' && c.fechaSesion) {
+    const hoy = new Date().toISOString().slice(0, 10);
+    if (c.fechaSesion > hoy) return 'proximas';
+  }
   const custom = (eq_getConfig().estadosCustom||[]).find(s => s.id === estado);
   return custom?.grupo || estado;
 }
