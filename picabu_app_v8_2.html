@@ -1043,8 +1043,8 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
   <div class="mbox" style="max-width:640px;">
     <div style="font-family:&#39;Yeseva One&#39;,serif;font-size:22px;margin-bottom:16px;" id="modal-titulo">Nuevo pedido</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
-      <div class="fg" style="margin:0;"><label>Nombre bebé</label><input type="text" id="f-bebe" placeholder="Ej: Alma"></div>
-      <div class="fg" style="margin:0;"><label>Nombre mamá</label><input type="text" id="f-mama" placeholder="Ej: Valeria Sacchi"></div>
+      <div class="fg" style="margin:0;"><label>Nombre bebé</label><input type="text" id="f-bebe" placeholder="Ej: Alma" oninput="actualizarVinculoEq()"></div>
+      <div class="fg" style="margin:0;"><label>Nombre mamá</label><input type="text" id="f-mama" placeholder="Ej: Valeria Sacchi" oninput="actualizarVinculoEq()"></div>
     </div>
     <div class="fg"><label>Productos</label><div id="prods-form"></div><button class="btn-add-p" onclick="addProdRow()">+ Agregar producto</button>
     <button class="btn-add-p" onclick="toggleFotosExtras()" style="margin-left:8px;background:var(--arena-l);border-color:var(--arena);">+ Fotos extras</button></div>
@@ -1062,6 +1062,10 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
     <div class="total-box"><span class="total-label">Total</span><span class="total-val" id="total-rt">$0</span></div>
     <div class="fg"><label>Pagos / saldo</label><input type="text" id="f-pagos" placeholder="Ej: $250.000 TRF + saldo efectivo abril"></div>
     <div class="fg" style="margin-bottom:0;"><label>Notas generales</label><textarea id="f-notas" rows="2" placeholder="Datos de sesión, pendientes..."></textarea></div>
+    <div id="eq-vinculo-section" style="display:none;background:#ede8f5;border:1px solid #c4b3e0;border-radius:10px;padding:10px 14px;margin-bottom:8px;">
+      <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#6a4fa0;font-weight:600;margin-bottom:8px;">Equipo app</div>
+      <div id="eq-vinculo-content"></div>
+    </div>
     <div class="mbox-btns">
       <button class="btn-sec" onclick="cerrarModal()">Cancelar</button>
       <button class="btn-eliminar" id="btn-eliminar-pedido" style="display:none" onclick="eliminarPedido()">🗑 Eliminar</button>
@@ -1419,16 +1423,24 @@ document.addEventListener('click', e => {
 function esPlantilla(nombre) {
   return /^\d+\s*plantillas?\s*(de\s*)?datos/i.test(nombre || '');
 }
+function esHojaExtra(nombre) {
+  return /^hoja.extra/i.test(nombre || '');
+}
+function _sizeDeNombre(nombre) {
+  const m = (nombre||'').match(/(\d+\s*x\s*\d+)/i);
+  return m ? m[1].replace(/\s/g,'').toLowerCase() : null;
+}
 
-// Traduce nombre de fotolibro sumando páginas de plantillas de datos (solo para vista Diseño)
+// Traduce nombre de fotolibro sumando plantillas + hojas extras del mismo tamaño (solo para vista Diseño)
 function nombreDiseno(pedido, x) {
   const m = (x.nombre||'').match(/^(.*\()(\d+)(H\).*)$/i);
   if (!m) return x.nombre || '';
-  // Sumar páginas de plantillas de datos del mismo pedido
+  const sizeFoto = _sizeDeNombre(x.nombre);
   let extras = 0;
   (pedido.prods||[]).forEach(p => {
     const pm = (p.nombre||'').match(/^(\d+)\s*plantillas?\s*(de\s*)?datos/i);
     if (pm) extras += parseInt(pm[1]);
+    if (esHojaExtra(p.nombre) && sizeFoto && _sizeDeNombre(p.nombre) === sizeFoto) extras++;
   });
   if (!extras) return x.nombre || '';
   return m[1] + (parseInt(m[2]) + extras) + m[3];
@@ -1537,7 +1549,7 @@ function clienteCardHtml(p, i, showPrecio, allowNameEdit, soloProveedor) {
   const prodsVisibles = p.prods.filter(x => {
     if (x.soloWA && allowNameEdit) return false; // ocultar en Diseño
     if (x.soloWA) return true; // mostrar en Pedidos
-    if (allowNameEdit && esPlantilla(x.nombre)) return false; // plantillas se consolidan en el fotolibro
+    if (allowNameEdit && (esPlantilla(x.nombre) || esHojaExtra(x.nombre))) return false; // se consolidan en el fotolibro
     if (soloProveedor && x.proveedor !== soloProveedor) return false; // filtro por proveedor
     if (x.cantIdx !== undefined) return x.cantIdx === 0;
     if (vistos.has(x.nombre)) return false;
@@ -1546,7 +1558,7 @@ function clienteCardHtml(p, i, showPrecio, allowNameEdit, soloProveedor) {
   const prodsHtml = prodsVisibles.map(x => prodRowHtml(i, x, p.prods.indexOf(x), showPrecio, allowNameEdit, prefijo, p)).join('');
 
   // Solo productos visibles (no fotos extras soloWA ni plantillas digitales)
-  const activosP = p.prods.filter(x => x.estado !== 'Entregado' && !x.soloWA && !esPlantilla(x.nombre));
+  const activosP = p.prods.filter(x => x.estado !== 'Entregado' && !x.soloWA && !esPlantilla(x.nombre) && !esHojaExtra(x.nombre));
   const todoListo = activosP.length > 0 && activosP.every(x => x.estado === 'Listo en estudio');
   const sesionesEq = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : [];
   const equipoSesCard = sesionesEq.find(s => s.mama && s.mama.toLowerCase() === (p.mama||'').toLowerCase() && s.bebe && s.bebe.toLowerCase().includes((p.bebe||'').toLowerCase()));
@@ -1596,7 +1608,7 @@ function clienteCardHtml(p, i, showPrecio, allowNameEdit, soloProveedor) {
 
 // ── RENDER PEDIDOS ──
 function todosEntregados(p) {
-  const visibles = (p.prods||[]).filter(x => !x.soloWA && !esPlantilla(x.nombre));
+  const visibles = (p.prods||[]).filter(x => !x.soloWA && !esPlantilla(x.nombre) && !esHojaExtra(x.nombre));
   return visibles.length > 0 && visibles.every(x => x.estado === 'Entregado');
 }
 
@@ -1630,6 +1642,84 @@ function videoPendiente(p) {
     s.bebe && s.bebe.toLowerCase().includes((p.bebe||'').toLowerCase())
   );
   return s ? (s.tareaVideoPendiente === true && s.tareaVideoHecho !== true && s.videoSinGrabar !== true) : false;
+}
+
+// ── EQUIPO LINK ──
+function _findEquipoMatch(p) {
+  const sesiones = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : [];
+  const previos = ['galeria_pendiente','pendiente_cliente'];
+  const candidatos = sesiones.filter(s => previos.includes(s.estado));
+  const bebeP = (p.bebe||'').split(/[\s\-]/)[0].toLowerCase();
+  const mamaPartes = (p.mama||'').toLowerCase().split(' ');
+  const mamaApellidoP = mamaPartes.slice(1).join(' ');
+  const scored = candidatos.map(s => {
+    const bebeS = (s.bebe||'').split(/[\s\-]/)[0].toLowerCase();
+    const mamaPartesS = (s.mama||'').toLowerCase().split(' ');
+    const mamaApellidoS = mamaPartesS.slice(1).join(' ');
+    let score = 0;
+    if (bebeP && bebeS && bebeP === bebeS) score++;
+    if (mamaPartes[0] && mamaPartesS[0] && mamaPartes[0] === mamaPartesS[0]) score++;
+    if (mamaApellidoP && mamaApellidoS && mamaApellidoP === mamaApellidoS) score++;
+    return { s, score };
+  });
+  const auto = scored.filter(x => x.score >= 2);
+  if (auto.length === 1) return { match: auto[0].s, tipo: 'auto' };
+  if (auto.length > 1) return { match: null, candidatos: auto.map(x=>x.s), tipo: 'multiple' };
+  return { match: null, candidatos, tipo: 'ninguno' };
+}
+
+function pasarAEdicionEquipo(sesId, cantFotos) {
+  const idx = _eqSesiones.findIndex(s => s.id === sesId);
+  if (idx < 0) return;
+  const c = _eqSesiones[idx];
+  c.estado = 'edicion_renu';
+  c.fechaConfirmacion = eq_hoy();
+  if (!c.fechaLimite) c.fechaLimite = eq_calcLimite(eq_hoy(), 30);
+  if (cantFotos) c.cantFotos = cantFotos;
+  eq_save();
+  renderSesionesAngie();
+  renderPedidos();
+}
+
+function actualizarVinculoEq() {
+  const bebe = document.getElementById('f-bebe')?.value.trim() || '';
+  const mama = document.getElementById('f-mama')?.value.trim() || '';
+  const section = document.getElementById('eq-vinculo-section');
+  const content = document.getElementById('eq-vinculo-content');
+  if (!section || !content) return;
+  if (!bebe && !mama) { section.style.display = 'none'; return; }
+  const match = _findEquipoMatch({ bebe, mama });
+  const fotosHtml = `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#3d2e6b;">Fotos a editar <input type="number" id="eq-cant-fotos" min="1" placeholder="cant." style="width:70px;padding:3px 7px;border-radius:8px;border:1px solid #c4b3e0;font-size:12px;font-family:inherit;"></label>`;
+  if (match.tipo === 'auto') {
+    const s = match.match;
+    section.style.display = '';
+    content.innerHTML = `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <span style="font-size:12px;color:#3d2e6b;"><strong>${s.bebe}</strong> · ${s.mama}</span>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#3d2e6b;cursor:pointer;">
+        <input type="checkbox" id="eq-pasar-check" data-sesid="${s.id}" checked style="accent-color:#6a4fa0;">
+        Pasar a edición Renu al guardar
+      </label>
+      ${fotosHtml}</div>`;
+  } else if (match.candidatos && match.candidatos.length) {
+    section.style.display = '';
+    const sorted = [...match.candidatos].sort((a,b) => (a.bebe||'').localeCompare(b.bebe||'', 'es'));
+    const opts = sorted.map(s => `<option value="${s.id}">${s.bebe} · ${s.mama}</option>`).join('');
+    content.innerHTML = `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <select id="eq-vinculo-sel" style="font-size:12px;padding:4px 8px;border-radius:8px;border:1px solid #c4b3e0;color:#3d2e6b;background:#fff;">
+        <option value="">Sin vincular</option>${opts}
+      </select>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#3d2e6b;cursor:pointer;">
+        <input type="checkbox" id="eq-pasar-check" data-sesid="" style="accent-color:#6a4fa0;">
+        Pasar a edición Renu al guardar
+      </label>
+      ${fotosHtml}</div>`;
+    document.getElementById('eq-vinculo-sel').addEventListener('change', function() {
+      const chk = document.getElementById('eq-pasar-check');
+      if (chk) { chk.dataset.sesid = this.value; chk.checked = !!this.value; }
+    });
+  } else {
+    section.style.display = 'none';
+  }
 }
 
 // ── RENDER DISEÑO ──
@@ -1932,6 +2022,7 @@ function abrirEditar(ci) {
     document.getElementById('fotos-res').textContent = '';
   }
   recalc();
+  actualizarVinculoEq();
   document.getElementById('modal').classList.add('open');
   document.getElementById('btn-eliminar-pedido').style.display = 'inline-block';
 }
@@ -2196,10 +2287,11 @@ function abrirModal() {
   document.getElementById('fotos-cant').value='';
   document.getElementById('fotos-res').textContent='';
   addProdRow();
+  const _vs=document.getElementById('eq-vinculo-section'); if(_vs) _vs.style.display='none';
   document.getElementById('modal').classList.add('open');
   document.getElementById('btn-eliminar-pedido').style.display='none';
 }
-function cerrarModal(){document.getElementById('modal').classList.remove('open'); document.getElementById('btn-eliminar-pedido').style.display='none'; editCI=null;}
+function cerrarModal(){document.getElementById('modal').classList.remove('open'); document.getElementById('btn-eliminar-pedido').style.display='none'; editCI=null; const s=document.getElementById('eq-vinculo-section'); if(s) s.style.display='none';}
 function eliminarPedido(){
   if(!confirm('¿Eliminar este pedido? Esta acción no se puede deshacer.')) return;
   pedidos.splice(editCI,1);
@@ -2353,6 +2445,11 @@ function guardarPedido(){
   } else {
     pedidos.unshift({bebe,mama,fecha:new Date().toLocaleDateString('es-AR'),prods,pagos:document.getElementById('f-pagos').value.trim(),notas:document.getElementById('f-notas').value.trim(),pago:''});
     save(0); cerrarModal(); renderPedidos();
+  }
+  const chk = document.getElementById('eq-pasar-check');
+  if (chk && chk.checked && chk.dataset.sesid) {
+    const cant = parseInt(document.getElementById('eq-cant-fotos')?.value || 0) || null;
+    pasarAEdicionEquipo(chk.dataset.sesid, cant);
   }
 }
 
