@@ -1756,7 +1756,7 @@ function renderDiseno() {
   const gruposSeg = {};
   pedidos.forEach((p,ci) => {
     p.prods.forEach((x,pi) => {
-      if (ESTADOS_ALERTA.includes(x.estado)) {
+      if (ESTADOS_ALERTA.includes(x.estado) && !x.soloWA && !esPlantilla(x.nombre) && !esHojaExtra(x.nombre)) {
         const d = daysSince(x.ultimoCambio || p.fecha);
         if (d >= dias) {
           const key = `${p.bebe} · ${p.mama}`;
@@ -1781,18 +1781,29 @@ function renderDiseno() {
   });
 
   const segEl = document.getElementById('alertas-seguimiento');
-  const keysSeg = Object.keys(gruposSeg);
+  const contactadosSR = getContactados();
+  const MS_48H = 48 * 60 * 60 * 1000;
+  const keysSeg = Object.keys(gruposSeg).filter(k => {
+    const c = contactadosSR['sr_' + k];
+    return !c || (Date.now() - c.ts) >= MS_48H;
+  });
   if (keysSeg.length) {
     segEl.innerHTML = `<div class="alert-box">
       <div class="alert-title">Sin respuesta del cliente</div>
-      ${keysSeg.map(k=>`<div class="alert-grupo">
-        <div class="alert-cliente">${k}</div>
-        ${gruposSeg[k].map(a=>`<div class="alert-item">
-          <span class="alert-prod">${a.prod}</span>
-          <span class="alert-badge">${a.estado}</span>
-          <span class="alert-dias">${a.dias} día${a.dias!==1?'s':''}</span>
-        </div>`).join('')}
-      </div>`).join('')}
+      ${keysSeg.map(k => {
+        const kEsc = k.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+        return `<div class="alert-grupo">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+            <input type="checkbox" onchange="marcarContactado('sr_${kEsc}',this.checked)" style="accent-color:var(--marron);width:15px;height:15px;cursor:pointer;flex-shrink:0;" title="Marcar como contactado (reaparece en 48h si no cambia el estado)">
+            <div class="alert-cliente" style="margin:0;">${k}</div>
+          </div>
+          ${gruposSeg[k].map(a=>`<div class="alert-item" style="padding-left:23px;">
+            <span class="alert-prod">${a.prod}</span>
+            <span class="alert-badge">${a.estado}</span>
+            <span class="alert-dias">${a.dias} día${a.dias!==1?'s':''}</span>
+          </div>`).join('')}
+        </div>`;
+      }).join('')}
     </div>`;
   } else {
     segEl.innerHTML = '';
