@@ -2315,43 +2315,7 @@ function eliminarPedido(){
   renderPedidos();
 }
 
-const DB=[
-  {c:'10-pola-iman',n:'10 imanes polaroid',p:76000},{c:'20-pola-iman',n:'20 imanes polaroid',p:90000},
-  {c:'30-pola-iman',n:'30 imanes polaroid',p:100000},{c:'10-iman-grande',n:'10 imanes 20x7',p:87000},
-  {c:'20-iman-grande',n:'20 imanes 20x7',p:105000},{c:'30-iman-grande',n:'30 imanes 20x7',p:120000},
-  {c:'8x10',n:'8x10cm',p:3200},{c:'13x18',n:'13x18cm',p:3900},{c:'15x20',n:'15x20cm',p:4200},
-  {c:'COPY1515FLEX-10',n:'Fotolibro Flexible 15x15cm (10H) SIN CAJA',p:130000},
-  {c:'COPY1515-10',n:'Fotolibro Premium 15x15cm (10H) SIN CAJA',p:146000},
-  {c:'COPY2020FLEX-10',n:'Fotolibro Flexible 20x20cm (10H) SIN CAJA',p:157000},
-  {c:'COPY2020-10',n:'Fotolibro Premium 20x20 (10H)',p:175000},
-  {c:'COPY25x25-10',n:'Fotolibro Premium 25x25 (10H)',p:198000},
-  {c:'COPY30x30-10',n:'Fotolibro Premium 30x30 (10H)',p:199000},
-  {c:'Canvas2030COPY',n:'Canvas 20x30',p:78000},{c:'Canvas3030COPY',n:'Canvas 30x30',p:89000},
-  {c:'Canvas3040COPY',n:'Canvas 30x40',p:96000},{c:'Canvas4040COPY',n:'Canvas 40x40',p:105000},
-  {c:'Canvas4060COPY',n:'Canvas 40x60',p:120000},
-  {c:'Mural3030COPY',n:'Mural 30x30',p:67000},{c:'Mural3040COPY',n:'Mural 30x40',p:70000},
-  {c:'Mural4050COPY',n:'Mural 40x50',p:84000},
-  {c:'1CLICK1010-6H',n:'1 Fotolibro 10x10 (6H)',p:56000},{c:'3CLICK1010-6H',n:'3 Fotolibros 10x10 (6H)',p:105000},
-  {c:'6CLICK1010-6H',n:'6 Fotolibros 10x10 (6H)',p:160000},{c:'1CLICK1010-10H',n:'1 Fotolibro 10x10 (10H)',p:65000},
-  {c:'3CLICK1010-10H',n:'3 Fotolibros 10x10 (10H)',p:125000},{c:'6CLICK1010-10H',n:'6 Fotolibros 10x10 (10H)',p:182000},
-  {c:'1CLICK1212-6H',n:'1 Fotolibro 12x12 (6H)',p:62000},{c:'3CLICK1212-6H',n:'3 Fotolibros 12x12 (6H)',p:119000},
-  {c:'6CLICK1212-6H',n:'6 Fotolibros 12x12 (6H)',p:176000},{c:'1CLICK1212-10H',n:'1 Fotolibro 12x12 (10H)',p:72000},
-  {c:'3CLICK1212-10H',n:'3 Fotolibros 12x12 (10H)',p:154000},{c:'6CLICK1212-10H',n:'6 Fotolibros 12x12 (10H)',p:240000},
-  {c:'1CLICK1414-6H',n:'1 Fotolibro 14x14 (6H)',p:72000},{c:'3CLICK1414-6H',n:'3 Fotolibros 14x14 (6H)',p:144000},
-  {c:'6CLICK1414-6H',n:'6 Fotolibros 14x14 (6H)',p:225000},{c:'1CLICK1414-10H',n:'1 Fotolibro 14x14 (10H)',p:83000},
-  {c:'3CLICK1414-10H',n:'3 Fotolibros 14x14 (10H)',p:185000},{c:'6CLICK1414-10H',n:'6 Fotolibros 14x14 (10H)',p:300000},
-  {c:'CLIKSingle2020',n:'Fotolibro Tapa Simple 20x20 (10H)',p:150000},
-  {c:'enmarcadoCLICK2530',n:'Enmarcado 25x30',p:85000},{c:'enmarcadoCLICK3030',n:'Enmarcado 30x30',p:90000},
-  {c:'enmarcadoCLICK3040',n:'Enmarcado 30x40',p:97000},{c:'enmarcadoCLICK4040',n:'Enmarcado 40x40',p:110000},
-  {c:'enmarcadoCLICK4050',n:'Enmarcado 40x50',p:120000},
-  {c:'Pack3-2530cm',n:'3 Enmarcados 25x30cm',p:215000},{c:'Pack3-3030cm',n:'3 Enmarcados 30x30cm',p:240000},
-  {c:'Pack3-3040cm',n:'3 Enmarcados 30x40cm',p:260000},{c:'Pack4-2530cm',n:'4 Enmarcados 25x30cm',p:270000},
-  {c:'Pack4-3030cm',n:'4 Enmarcados 30x30cm',p:295000},{c:'Pack4-3040cm',n:'4 Enmarcados 30x40cm',p:335000},
-  {c:'6llaveros',n:'Pack 6 llaveros',p:50000},{c:'12llaveros',n:'Pack 12 llaveros',p:70000},
-  {c:'10postales',n:'Pack 10 Postales 10x15',p:70000},{c:'20postales',n:'Pack 20 Postales 10x15',p:90000},
-  {c:'30postales',n:'Pack 30 Postales 10x15',p:99000},
-  {c:'Invitación',n:'Invitación digital',p:40000},{c:'Video',n:'Video backstage',p:75000}
-];
+const DB = [];
 
 function addProdRow() {
   const container=document.getElementById('prods-form');
@@ -2542,17 +2506,11 @@ function importarDesdeExcel(){
     const partes = linea.split('\t');
     if(partes.length < 2) { err++; return; }
     const nombre = partes[0].trim();
-    const precio = Number(partes[1].replace(/[.$]/g,'').trim());
+    const precio = Number(partes[partes.length-1].replace(/[^\d]/g,''));
     if(!nombre || !precio) { err++; return; }
-    // Buscar si coincide con un producto base
-    const base = DB.find(p => p.n.toLowerCase() === nombre.toLowerCase());
-    if(base){
-      const idx = arr.findIndex(x=>x.override && x.c===base.c);
-      if(idx>=0) arr[idx].p=precio; else arr.push({c:base.c,n:base.n,p:precio,override:true});
-    } else {
-      const idx = arr.findIndex(x=>!x.override && x.n.toLowerCase()===nombre.toLowerCase());
-      if(idx>=0) arr[idx].p=precio; else arr.push({c:'CUSTOM-'+Date.now()+Math.random().toString(36).substr(2,4),n:nombre,p:precio});
-    }
+    const idx = arr.findIndex(x => x.n.toLowerCase() === nombre.toLowerCase());
+    if(idx >= 0) arr[idx].p = precio;
+    else arr.push({c:'p'+Date.now()+Math.random().toString(36).substr(2,4), n:nombre, p:precio});
     ok++;
   });
   saveDBUser(arr);
@@ -2661,70 +2619,28 @@ function recalcFotos(){
 // ── DB EDITABLE ──
 function getDBUser(){ try{return JSON.parse(localStorage.getItem('picabu_db_user')||'[]');}catch(e){return [];} }
 function saveDBUser(arr){ localStorage.setItem('picabu_db_user',JSON.stringify(arr)); }
-function getDBFull(){
-  const custom = getDBUser();
-  const overrides = {};
-  custom.filter(p=>p.override).forEach(p=>{ overrides[p.c]=p.p; });
-  const base = DB.map(p=> overrides[p.c] ? {...p, p:overrides[p.c]} : p);
-  const nuevos = custom.filter(p=>!p.override);
-  return [...base, ...nuevos];
-}
+function getDBFull(){ return getDBUser(); }
 
 function renderDBConfig(){
   const el = document.getElementById('db-config-list');
   if(!el) return;
-  const custom = getDBUser();
-
-  // Overrides de precios sobre la DB base
-  const overrides = {};
-  custom.filter(p=>p.override).forEach(p=>{ overrides[p.c]=p; });
-
-  const baseHtml = `<div style="margin-bottom:12px;">
-    <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase;">Productos base (editá el precio)</div>
-    ${DB.map((p,i)=>{
-      const ov = overrides[p.c];
-      const precio = ov ? ov.p : p.p;
-      return `<div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
-        <span style="flex:1;font-size:12px;">${p.n}</span>
-        <input type="number" value="${precio}" data-base-c="${p.c}" data-base-orig="${p.p}"
-          onchange="actualizarPrecioBase('${p.c}','${p.n}',this.value)"
-          style="width:90px;border:1px solid var(--arena);border-radius:6px;padding:4px 6px;font-size:12px;font-family:'Montserrat',sans-serif;${ov?'border-color:var(--marron);font-weight:600;':''}">
-        ${ov?`<button onclick="resetPrecioBase('${p.c}')" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--muted);" title="Restaurar original">↩</button>`:'<span style="width:20px;"></span>'}
-      </div>`;
-    }).join('')}
+  const lista = getDBUser();
+  if(!lista.length){
+    el.innerHTML = '<div style="font-size:12px;color:var(--muted);">Todavía no cargaste ningún producto. Usá el importador de arriba.</div>';
+    return;
+  }
+  el.innerHTML = `<div style="margin-bottom:12px;">
+    <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase;">Lista de productos (${lista.length})</div>
+    ${lista.map((p,i)=>`<div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
+      <span style="flex:1;font-size:12px;">${p.n}</span>
+      <span style="font-size:12px;font-weight:600;color:var(--text);">${fmt(p.p)}</span>
+      <button onclick="editarProdDB(${i})" style="background:none;border:1px solid var(--arena);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;">Editar</button>
+      <button onclick="eliminarProdDB(${i})" style="background:none;border:1px solid #c97b7b;color:#c97b7b;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;">×</button>
+    </div>`).join('')}
   </div>`;
-
-  const customSinOverride = custom.filter(p=>!p.override);
-  const customHtml = customSinOverride.length
-    ? `<div style="margin-bottom:12px;">
-        <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase;">Productos nuevos</div>
-        ${customSinOverride.map((p,i)=>`<div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
-          <span style="flex:1;font-size:12px;">${p.n}</span>
-          <span style="font-size:12px;color:var(--muted);">${fmt(p.p)}</span>
-          <button onclick="editarProdDB(${custom.indexOf(p)})" style="background:none;border:1px solid var(--arena);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;">Editar</button>
-          <button onclick="eliminarProdDB(${custom.indexOf(p)})" style="background:none;border:1px solid #c97b7b;color:#c97b7b;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;">×</button>
-        </div>`).join('')}
-      </div>`
-    : '';
-
-  el.innerHTML = baseHtml + customHtml;
 }
 
-function actualizarPrecioBase(c, n, val){
-  const p = Number(val);
-  if(!p) return;
-  const arr = getDBUser();
-  const idx = arr.findIndex(x=>x.override && x.c===c);
-  if(idx>=0) arr[idx].p=p; else arr.push({c,n,p,override:true});
-  saveDBUser(arr);
-  renderDBConfig();
-}
 
-function resetPrecioBase(c){
-  const arr = getDBUser().filter(x=>!(x.override && x.c===c));
-  saveDBUser(arr);
-  renderDBConfig();
-}
 function agregarProdDB(){
   const n = document.getElementById('db-nombre')?.value.trim();
   const c = document.getElementById('db-codigo')?.value.trim();
