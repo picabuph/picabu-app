@@ -799,7 +799,11 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
       <div class="cfg-box" style="flex-direction:column;align-items:flex-start;gap:10px;margin-bottom:16px;">
         <label style="font-size:12px;font-weight:600;">Pegar desde Excel</label>
         <textarea id="db-paste" rows="5" placeholder="Pegá acá las dos columnas de tu Excel (nombre	precio)" style="width:100%;border:1px solid var(--arena);border-radius:8px;padding:8px;font-family:'Montserrat',sans-serif;font-size:13px;resize:vertical;"></textarea>
-        <button class="btn-cfg-pri" onclick="importarDesdeExcel()">Importar precios</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button class="btn-cfg-pri" onclick="importarDesdeExcel()">Importar precios</button>
+          <button class="btn-cfg-pri" onclick="importarLimpio()" style="background:var(--marron-d);color:#fff;" title="Borra toda la lista personalizada y la reemplaza con lo que pegaste. Los pedidos ya cargados no se modifican.">Limpiar y reimportar</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:-4px;">«Limpiar y reimportar» reemplaza toda la lista con lo que pegaste — usalo cada mes para evitar duplicados. Los pedidos ya cargados no cambian.</div>
       </div>
       <div class="cfg-box" style="flex-direction:column;align-items:flex-start;gap:10px;">
         <div id="db-config-list"></div>
@@ -2555,6 +2559,14 @@ function importarDesdeExcel(){
   document.getElementById('db-paste').value='';
   renderDBConfig();
   alert(`✓ ${ok} precio${ok!==1?'s':''} actualizados${err?` · ${err} línea${err!==1?'s':''} ignoradas`:''}.`);
+}
+
+function importarLimpio(){
+  const txt = document.getElementById('db-paste').value.trim();
+  if(!txt){alert('Pegá datos primero.');return;}
+  if(!confirm('¿Reemplazar toda la lista de precios con lo que pegaste?\n\nLos pedidos ya cargados no se modifican.')) return;
+  saveDBUser([]);
+  importarDesdeExcel();
 }
 
 function limpiarEntregados(origen) {
