@@ -1673,9 +1673,10 @@ function _findEquipoMatch(p) {
 }
 
 function pasarAEdicionEquipo(sesId, cantFotos) {
-  const idx = _eqSesiones.findIndex(s => s.id === sesId);
-  if (idx < 0) return;
-  const c = _eqSesiones[idx];
+  const lista = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : _eqSesiones;
+  const idx = lista.findIndex(s => s.id === sesId);
+  if (idx < 0) { console.warn('[equipo] sesión no encontrada:', sesId); return; }
+  const c = lista[idx];
   if (ESTADOS_PREVIOS_EQ.includes(c.estado)) {
     c.estado = 'edicion_renu';
     c.fechaConfirmacion = eq_hoy();
@@ -1683,7 +1684,8 @@ function pasarAEdicionEquipo(sesId, cantFotos) {
     if (cantFotos) c.cantFotos = cantFotos;
   }
   c.tieneProductos = true;
-  eq_save();
+  _eqSesiones = lista;
+  if (typeof window.saveEquipoSesiones === 'function') window.saveEquipoSesiones(lista);
   renderSesionesAngie();
   renderPedidos();
 }
