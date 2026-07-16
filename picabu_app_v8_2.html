@@ -1437,7 +1437,7 @@ function _sizeDeNombre(nombre) {
 
 // Traduce nombre de fotolibro sumando plantillas + hojas extras del mismo tamaño (solo para vista Diseño)
 function nombreDiseno(pedido, x) {
-  const m = (x.nombre||'').match(/^(.*\()(\d+)(H\).*)$/i);
+  const m = (x.nombre||'').match(/^(.*\()(\d+)(\s*(?:H\b|hojas?).*)$/i);
   if (!m) return x.nombre || '';
   const sizeFoto = _sizeDeNombre(x.nombre);
   let extras = 0;
