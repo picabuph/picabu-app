@@ -1442,6 +1442,7 @@ function nombreDiseno(pedido, x) {
   const sizeFoto = _sizeDeNombre(x.nombre);
   let extras = 0;
   (pedido.prods||[]).forEach(p => {
+    if (p.cantIdx !== undefined && p.cantIdx !== 0) return; // contar solo 1 copia, no multiplicar por cant
     const pm = (p.nombre||'').match(/^(\d+)\s*plantillas?\s*(de\s*)?datos/i);
     if (pm) extras += parseInt(pm[1]);
     if (esHojaExtra(p.nombre) && sizeFoto && _sizeDeNombre(p.nombre) === sizeFoto) extras++;
