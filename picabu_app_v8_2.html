@@ -1649,14 +1649,14 @@ function videoPendiente(p) {
 }
 
 // ── EQUIPO LINK ──
+const ESTADOS_PREVIOS_EQ = ['galeria_pendiente', 'pendiente_cliente'];
+
 function _findEquipoMatch(p) {
   const sesiones = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : [];
-  const previos = ['galeria_pendiente','pendiente_cliente'];
-  const candidatos = sesiones.filter(s => previos.includes(s.estado));
   const bebeP = (p.bebe||'').split(/[\s\-]/)[0].toLowerCase();
   const mamaPartes = (p.mama||'').toLowerCase().split(' ');
   const mamaApellidoP = mamaPartes.slice(1).join(' ');
-  const scored = candidatos.map(s => {
+  const scored = sesiones.map(s => {
     const bebeS = (s.bebe||'').split(/[\s\-]/)[0].toLowerCase();
     const mamaPartesS = (s.mama||'').toLowerCase().split(' ');
     const mamaApellidoS = mamaPartesS.slice(1).join(' ');
@@ -1669,17 +1669,20 @@ function _findEquipoMatch(p) {
   const auto = scored.filter(x => x.score >= 2);
   if (auto.length === 1) return { match: auto[0].s, tipo: 'auto' };
   if (auto.length > 1) return { match: null, candidatos: auto.map(x=>x.s), tipo: 'multiple' };
-  return { match: null, candidatos, tipo: 'ninguno' };
+  return { match: null, candidatos: sesiones, tipo: 'ninguno' };
 }
 
 function pasarAEdicionEquipo(sesId, cantFotos) {
   const idx = _eqSesiones.findIndex(s => s.id === sesId);
   if (idx < 0) return;
   const c = _eqSesiones[idx];
-  c.estado = 'edicion_renu';
-  c.fechaConfirmacion = eq_hoy();
-  if (!c.fechaLimite) c.fechaLimite = eq_calcLimite(eq_hoy(), 30);
-  if (cantFotos) c.cantFotos = cantFotos;
+  if (ESTADOS_PREVIOS_EQ.includes(c.estado)) {
+    c.estado = 'edicion_renu';
+    c.fechaConfirmacion = eq_hoy();
+    if (!c.fechaLimite) c.fechaLimite = eq_calcLimite(eq_hoy(), 30);
+    if (cantFotos) c.cantFotos = cantFotos;
+  }
+  c.tieneProductos = true;
   eq_save();
   renderSesionesAngie();
   renderPedidos();
@@ -1694,16 +1697,21 @@ function actualizarVinculoEq() {
   if (!bebe && !mama) { section.style.display = 'none'; return; }
   const match = _findEquipoMatch({ bebe, mama });
   const fotosHtml = `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#3d2e6b;">Fotos a editar <input type="number" id="eq-cant-fotos" min="1" placeholder="cant." style="width:70px;padding:3px 7px;border-radius:8px;border:1px solid #c4b3e0;font-size:12px;font-family:inherit;"></label>`;
-  if (match.tipo === 'auto') {
-    const s = match.match;
-    section.style.display = '';
-    content.innerHTML = `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+  const _renderMatch = (s) => {
+    const esPrevio = ESTADOS_PREVIOS_EQ.includes(s.estado);
+    const label = esPrevio ? 'Pasar a edición Renu al guardar' : 'Vincular con equipo app al guardar';
+    const extras = esPrevio ? fotosHtml : '';
+    return `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
       <span style="font-size:12px;color:#3d2e6b;"><strong>${s.bebe}</strong> · ${s.mama}</span>
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#3d2e6b;cursor:pointer;">
         <input type="checkbox" id="eq-pasar-check" data-sesid="${s.id}" checked style="accent-color:#6a4fa0;">
-        Pasar a edición Renu al guardar
+        ${label}
       </label>
-      ${fotosHtml}</div>`;
+      ${extras}</div>`;
+  };
+  if (match.tipo === 'auto') {
+    section.style.display = '';
+    content.innerHTML = _renderMatch(match.match);
   } else if (match.candidatos && match.candidatos.length) {
     section.style.display = '';
     const sorted = [...match.candidatos].sort((a,b) => (a.bebe||'').localeCompare(b.bebe||'', 'es'));
@@ -1714,12 +1722,15 @@ function actualizarVinculoEq() {
       </select>
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#3d2e6b;cursor:pointer;">
         <input type="checkbox" id="eq-pasar-check" data-sesid="" style="accent-color:#6a4fa0;">
-        Pasar a edición Renu al guardar
+        Vincular con equipo app al guardar
       </label>
       ${fotosHtml}</div>`;
     document.getElementById('eq-vinculo-sel').addEventListener('change', function() {
       const chk = document.getElementById('eq-pasar-check');
       if (chk) { chk.dataset.sesid = this.value; chk.checked = !!this.value; }
+      const sel = sesiones?.find(s => s.id === this.value);
+      const lbl = document.querySelector('#eq-vinculo-section label[for] span, #eq-vinculo-section label span');
+      if (sel && lbl) lbl.textContent = ESTADOS_PREVIOS_EQ.includes(sel.estado) ? 'Pasar a edición Renu al guardar' : 'Vincular con equipo app al guardar';
     });
   } else {
     section.style.display = 'none';
@@ -2506,17 +2517,19 @@ function importarDesdeExcel(){
     const partes = linea.split('\t');
     if(partes.length < 2) { err++; return; }
     const nombre = partes[0].trim();
+    const tiene3 = partes.length >= 3;
+    const codigo = tiene3 ? partes[1].trim() : '';
     const precio = Number(partes[partes.length-1].replace(/[^\d]/g,''));
     if(!nombre || !precio) { err++; return; }
     const idx = arr.findIndex(x => x.n.toLowerCase() === nombre.toLowerCase());
-    if(idx >= 0) arr[idx].p = precio;
-    else arr.push({c:'p'+Date.now()+Math.random().toString(36).substr(2,4), n:nombre, p:precio});
+    if(idx >= 0) { arr[idx].p = precio; if(codigo) arr[idx].c = codigo; }
+    else arr.push({c: codigo || 'p'+Date.now()+Math.random().toString(36).substr(2,4), n:nombre, p:precio});
     ok++;
   });
   saveDBUser(arr);
   document.getElementById('db-paste').value='';
   renderDBConfig();
-  alert(`✓ ${ok} precio${ok!==1?'s':''} actualizados${err?` · ${err} línea${err!==1?'s':''} ignoradas`:''}.`);
+  alert(`✓ ${ok} producto${ok!==1?'s':''} importados${err?` · ${err} línea${err!==1?'s':''} ignoradas`:''}.`);
 }
 
 function importarLimpio(){
@@ -2630,13 +2643,27 @@ function renderDBConfig(){
     return;
   }
   el.innerHTML = `<div style="margin-bottom:12px;">
-    <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase;">Lista de productos (${lista.length})</div>
-    ${lista.map((p,i)=>`<div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
-      <span style="flex:1;font-size:12px;">${p.n}</span>
-      <span style="font-size:12px;font-weight:600;color:var(--text);">${fmt(p.p)}</span>
-      <button onclick="editarProdDB(${i})" style="background:none;border:1px solid var(--arena);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;">Editar</button>
-      <button onclick="eliminarProdDB(${i})" style="background:none;border:1px solid #c97b7b;color:#c97b7b;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;">×</button>
-    </div>`).join('')}
+    <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase;">Lista de productos (${lista.length})</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr>
+          <th style="text-align:left;font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.5px;text-transform:uppercase;padding:0 8px 6px 0;border-bottom:1px solid var(--arena);">Nombre</th>
+          <th style="text-align:left;font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.5px;text-transform:uppercase;padding:0 8px 6px;border-bottom:1px solid var(--arena);">Código</th>
+          <th style="text-align:right;font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.5px;text-transform:uppercase;padding:0 8px 6px;border-bottom:1px solid var(--arena);">Precio</th>
+          <th style="border-bottom:1px solid var(--arena);"></th>
+          <th style="border-bottom:1px solid var(--arena);"></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${lista.map((p,i)=>`<tr>
+          <td style="padding:5px 8px 5px 0;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(p.n||'').replace(/"/g,'&quot;')}">${p.n}</td>
+          <td style="padding:5px 8px;color:var(--muted);font-family:monospace;font-size:11px;white-space:nowrap;">${p.c||'—'}</td>
+          <td style="padding:5px 8px;font-weight:600;text-align:right;white-space:nowrap;">${fmt(p.p)}</td>
+          <td style="padding:5px 4px;white-space:nowrap;"><button onclick="editarProdDB(${i})" style="background:none;border:1px solid var(--arena);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;">Editar</button></td>
+          <td style="padding:5px 0 5px 4px;"><button onclick="eliminarProdDB(${i})" style="background:none;border:1px solid #c97b7b;color:#c97b7b;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;">×</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
   </div>`;
 }
 
