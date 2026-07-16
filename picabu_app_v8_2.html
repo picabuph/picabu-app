@@ -2519,7 +2519,12 @@ function importarDesdeExcel(){
     const tiene3 = partes.length >= 3;
     const codigo = tiene3 ? partes[0].trim() : '';
     const nombre = tiene3 ? partes[1].trim() : partes[0].trim();
-    const precio = Number(partes[partes.length-1].replace(/[^\d]/g,''));
+    const precio = (() => {
+      const s = partes[partes.length-1].replace(/[$\s]/g,'').trim();
+      if (s.includes('.') && s.includes(',')) return parseInt(s.replace(/\./g,'').split(',')[0]); // 30.000,00 → 30000
+      if (s.includes(',')) return parseInt(s.replace(/,/g,''));  // 78,000 → 78000
+      return parseInt(s.replace(/\./g,''));                      // 30.000 o 30000
+    })();
     if(!nombre || !precio) { err++; return; }
     const idx = arr.findIndex(x => x.n.toLowerCase() === nombre.toLowerCase());
     if(idx >= 0) { arr[idx].p = precio; if(codigo) arr[idx].c = codigo; }
