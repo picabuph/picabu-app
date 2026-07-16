@@ -2516,9 +2516,9 @@ function importarDesdeExcel(){
   lineas.forEach(linea => {
     const partes = linea.split('\t');
     if(partes.length < 2) { err++; return; }
-    const nombre = partes[0].trim();
     const tiene3 = partes.length >= 3;
-    const codigo = tiene3 ? partes[1].trim() : '';
+    const codigo = tiene3 ? partes[0].trim() : '';
+    const nombre = tiene3 ? partes[1].trim() : partes[0].trim();
     const precio = Number(partes[partes.length-1].replace(/[^\d]/g,''));
     if(!nombre || !precio) { err++; return; }
     const idx = arr.findIndex(x => x.n.toLowerCase() === nombre.toLowerCase());
