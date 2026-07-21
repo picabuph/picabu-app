@@ -100,6 +100,28 @@
     try { await setDoc(EQUIPO_REF, { lista, updated: new Date().toISOString() }); }
     catch(e) { console.warn("Firebase deshacerSinVideo:", e); }
   };
+
+  // ── PRODUCTOS (lista de precios) — sincronizada en Firebase para que funcione en cualquier origen ──
+  const PRODUCTOS_REF = doc(db, "picabu", "productos");
+  window._dbProductos = [];
+  onSnapshot(PRODUCTOS_REF, (snap) => {
+    if (snap.exists() && snap.data()?.lista) {
+      window._dbProductos = snap.data().lista;
+      localStorage.setItem('picabu_db_user', JSON.stringify(window._dbProductos));
+      if (typeof renderDBConfig === 'function') renderDBConfig();
+    } else {
+      // Primera vez: migrar lo que haya en localStorage a Firebase
+      const local = (() => { try { return JSON.parse(localStorage.getItem('picabu_db_user') || '[]'); } catch(e) { return []; } })();
+      if (local.length > 0) {
+        window._dbProductos = local;
+        setDoc(PRODUCTOS_REF, { lista: local, updated: new Date().toISOString() }).catch(e => console.warn('Firebase productos migrate:', e));
+      }
+    }
+  }, err => console.warn('[productos]', err));
+  window.saveProductosToFirebase = async function(arr) {
+    try { await setDoc(PRODUCTOS_REF, { lista: arr, updated: new Date().toISOString() }); }
+    catch(e) { console.warn("Firebase productos:", e); }
+  };
 </script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -228,6 +250,11 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .total-label { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); font-weight:500; }
 .total-val { font-family:'Yeseva One',serif; font-size:20px; color:var(--marron-d); }
 .pf-row { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:8px; }
+.pf-extras { display:none; flex-direction:column; gap:5px; border-top:1px dashed var(--border); margin-top:8px; padding-top:8px; }
+.pf-ext-fila { display:flex; gap:8px; align-items:center; }
+.pf-ext-tipo-lbl { font-size:11px; color:var(--muted); white-space:nowrap; min-width:140px; }
+.pf-ext-n { width:52px; border:1px solid var(--border); border-radius:6px; padding:4px 6px; font-size:12px; font-family:inherit; background:var(--white); color:var(--text); }
+.pf-ext-info { font-size:11px; color:var(--muted); }
 .pf-top { display:grid; grid-template-columns:1fr 100px 70px 32px; gap:8px; align-items:center; }
 .pf-wrap { position:relative; }
 .pf-inp { width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; background:var(--white); color:var(--text); font-family:'Montserrat',sans-serif; outline:none; }
@@ -2029,13 +2056,15 @@ function abrirEditar(ci) {
           oninput="filtrarProds(this,'${id}')"
           onfocus="abrirPFDrop('${id}')"
           onblur="setTimeout(()=>cerrarPFDrop('${id}'),160)">
-        <div class="pf-drop" id="pfd-${id}">${DB.map(p=>`<div class="pf-opt" data-c="${p.c}" data-p="${p.p}" onmousedown="selProd(this,'${id}')">${p.n}<span class="pf-opt-price">${fmt(p.p)}</span></div>`).join('')}</div>
+        <div class="pf-drop" id="pfd-${id}">${getDBFull().map(p=>`<div class="pf-opt" data-c="${p.c}" data-p="${p.p}" onmousedown="selProd(this,'${id}')">${p.n}<span class="pf-opt-price">${fmt(p.p)}</span></div>`).join('')}</div>
       </div>
       <div class="prec-w"><span>$</span><input type="number" class="pf-price" value="${x.precio||0}" min="0" oninput="recalc()"></div>
       <input type="number" class="pf-inp pf-cant" placeholder="cant" min="1" value="${cant>1?cant:''}" style="text-align:center;padding:8px 6px;" oninput="recalc()">
       <button class="btn-rm" onclick="this.closest('.pf-row').remove();recalc()">×</button>
-    </div>`;
+    </div>${_extrasDropHtml(id)}`;
     container.appendChild(div);
+    // Activar extras solo para Fotolibro Premium
+    if(/fotolibro\s+premium/i.test(x.nombre||'')&&/\(\d+\s*(?:H\b|hojas?)/i.test(x.nombre||'')) _initRowExtras(div, x.nombre, x.precio);
   });
   recalc();
   // Restaurar fotos extras si el pedido las tenía
@@ -2331,6 +2360,121 @@ function eliminarPedido(){
 
 const DB = [];
 
+function _buscarPrecioHoja(size) {
+  const db = getDBFull();
+  // 1ª pasada: "hoja adicional / hoja extra" + tamaño exacto, sin diseño
+  for (const p of db) {
+    const n = (p.n||'').toLowerCase();
+    if (!n.includes('hoja adicional') && !n.includes('hoja extra')) continue;
+    if (n.includes('dise')) continue;
+    if (size && _sizeDeNombre(p.n) !== size) continue;
+    return p.p;
+  }
+  // 2ª pasada: cualquier "hoja" + tamaño, sin fotolibro/plantilla/diseño
+  for (const p of db) {
+    const n = (p.n||'').toLowerCase();
+    if (!n.includes('hoja')) continue;
+    if (n.includes('fotolibro') || n.includes('plantilla') || n.includes('dise')) continue;
+    if (size && _sizeDeNombre(p.n) !== size) continue;
+    return p.p;
+  }
+  // 3ª pasada: sin filtro de tamaño (por si el fotolibro tiene nombre atípico)
+  for (const p of db) {
+    const n = (p.n||'').toLowerCase();
+    if (!n.includes('hoja adicional') && !n.includes('hoja extra')) continue;
+    if (n.includes('dise')) continue;
+    return p.p;
+  }
+  return 0;
+}
+function _buscarBaseFolio(nombre) {
+  // Busca el fotolibro equivalente en la DB solo para obtener el conteo de páginas base
+  const size = _sizeDeNombre(nombre);
+  const lnombre = (nombre||'').toLowerCase();
+  const db = getDBFull();
+  const esActivo = p => !/discontinu/i.test(p.n||''); // excluir DISCONTINUO
+  // 1ª pasada: prefijo exacto antes del número de hojas (mismo tipo, mismo tamaño), activos
+  const baseKey = lnombre.replace(/\s*\(\d+\s*(?:h\b|hojas?).*$/i, '').trim();
+  for (const p of db) {
+    if (!esActivo(p)) continue;
+    const pn = (p.n||'').toLowerCase();
+    if (pn.startsWith(baseKey) && /\(\d+\s*(?:h\b|hojas?)/i.test(p.n)) return p;
+  }
+  // 2ª pasada: mismo tamaño + mismo tipo (premium/flexible/etc), activos
+  const esPremium = lnombre.includes('premium');
+  const esFlexible = lnombre.includes('flexible');
+  for (const p of db) {
+    if (!esActivo(p)) continue;
+    const n = (p.n||'').toLowerCase();
+    if (!n.includes('fotolibro')) continue;
+    if (!/\(\d+\s*(?:h\b|hojas?)/i.test(p.n)) continue;
+    if (size && _sizeDeNombre(p.n) !== size) continue;
+    if (esPremium && !n.includes('premium')) continue;
+    if (esFlexible && !n.includes('flexible')) continue;
+    return p;
+  }
+  // 3ª pasada: solo tamaño, activos
+  for (const p of db) {
+    if (!esActivo(p)) continue;
+    const n = (p.n||'').toLowerCase();
+    if (!n.includes('fotolibro')) continue;
+    if (!/\(\d+\s*(?:h\b|hojas?)/i.test(p.n)) continue;
+    if (size && _sizeDeNombre(p.n) !== size) continue;
+    return p;
+  }
+  return null;
+}
+function _initRowExtras(div, nombre, precioGuardado) {
+  const mFolio = (nombre||'').match(/^(.*\()(\d+)(\s*(?:H\b|hojas?).*)$/i);
+  const extDiv = div.querySelector('.pf-extras');
+  if (!mFolio || !extDiv) return;
+  const size = _sizeDeNombre(nombre);
+  let basePrecio = precioGuardado;
+  let basePaginas = parseInt(mFolio[2]);
+  // Solo usar la DB para corregir el conteo de páginas base (no reemplazar nombre ni precio)
+  const dbFolio = _buscarBaseFolio(nombre);
+  if (dbFolio) {
+    const mDB = (dbFolio.n||'').match(/\((\d+)\s*(?:H\b|hojas?)/i);
+    if (mDB) basePaginas = parseInt(mDB[1]);
+  }
+  div.dataset.basePrecio = basePrecio;
+  div.dataset.basePaginas = basePaginas;
+  div.dataset.baseNombre = nombre; // Siempre el nombre original seleccionado/guardado
+  div.dataset.baseSize = size || '';
+  const precioHoja = _buscarPrecioHoja(size);
+  extDiv.querySelector('.pf-ext-n-hoja').value = 0;
+  extDiv.querySelector('.pf-ext-n-plant').value = 0;
+  extDiv.querySelector('.pf-ext-info-hoja').textContent = precioHoja ? `${fmt(precioHoja)} × hoja` : '⚠ precio no encontrado en lista';
+  extDiv.querySelector('.pf-ext-info-plant').textContent = '';
+  extDiv.style.display = 'flex';
+}
+function _buscarPrecioPlantilla(cant) {
+  // Busca el combo exacto "N plantilla(s) datos" según cantidad
+  for (const p of getDBFull()) {
+    const m = (p.n||'').match(/^(\d+)\s*plantillas?\s*(de\s*)?datos/i);
+    if (m && parseInt(m[1]) === cant) return p.p;
+  }
+  // Si no hay combo exacto, usar "1 plantilla datos" × cant como fallback
+  for (const p of getDBFull()) {
+    if (/^1\s*plantilla/i.test(p.n||'')) return p.p * cant;
+  }
+  return 0;
+}
+function _extrasDropHtml(id) {
+  return `<div class="pf-extras" id="pfext-${id}">
+    <input type="hidden" class="pf-ext-cost" value="0">
+    <div class="pf-ext-fila">
+      <span class="pf-ext-tipo-lbl">Hojas adicionales:</span>
+      <input type="number" class="pf-ext-n pf-ext-n-hoja" min="0" value="0" onfocus="this.select()" oninput="recalcExtras('${id}')">
+      <span class="pf-ext-info pf-ext-info-hoja"></span>
+    </div>
+    <div class="pf-ext-fila">
+      <span class="pf-ext-tipo-lbl">Plantillas de datos:</span>
+      <input type="number" class="pf-ext-n pf-ext-n-plant" min="0" value="0" onfocus="this.select()" oninput="recalcExtras('${id}')">
+      <span class="pf-ext-info pf-ext-info-plant"></span>
+    </div>
+  </div>`;
+}
 function addProdRow() {
   const container=document.getElementById('prods-form');
   const id='pr_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
@@ -2347,7 +2491,7 @@ function addProdRow() {
     <div class="prec-w"><span>$</span><input type="number" class="pf-price" placeholder="0" min="0" oninput="recalc()"></div>
     <input type="number" class="pf-inp pf-cant" placeholder="cant" min="1" value="" style="text-align:center;padding:8px 6px;" oninput="recalc()">
     <button class="btn-rm" onclick="this.closest('.pf-row').remove();recalc()">×</button>
-  </div>`;
+  </div>${_extrasDropHtml(id)}`;
   container.appendChild(div);
 }
 
@@ -2364,7 +2508,55 @@ function selProd(opt,id){
   const nombre=opt.firstChild.textContent.trim();
   const ni=row.querySelector('.pf-nombre');
   ni.value=nombre; ni.dataset.codigo=opt.dataset.c;
-  row.querySelector('.pf-price').value=opt.dataset.p;
+  const basePrice=Number(opt.dataset.p);
+  row.querySelector('.pf-price').value=basePrice;
+  // Extras solo para Fotolibro Premium con hojas en el nombre
+  const esPremiumConHojas=/fotolibro\s+premium/i.test(nombre)&&/\(\d+\s*(?:H\b|hojas?)/i.test(nombre);
+  const extDiv=row.querySelector('.pf-extras');
+  if(esPremiumConHojas&&extDiv){
+    _initRowExtras(row, nombre, basePrice);
+  } else if(extDiv){
+    extDiv.style.display='none';
+    extDiv.querySelector('.pf-ext-n-hoja').value=0;
+    extDiv.querySelector('.pf-ext-n-plant').value=0;
+    extDiv.querySelector('.pf-ext-cost').value=0;
+    delete row.dataset.basePrecio; delete row.dataset.basePaginas; delete row.dataset.baseNombre;
+  }
+  recalc();
+}
+function recalcExtras(id){
+  const row=document.querySelector(`[data-rowid="${id}"]`);if(!row)return;
+  const extDiv=row.querySelector('.pf-extras');if(!extDiv)return;
+  const nHoja=parseInt(extDiv.querySelector('.pf-ext-n-hoja').value)||0;
+  const nPlant=parseInt(extDiv.querySelector('.pf-ext-n-plant').value)||0;
+  const basePrecio=Number(row.dataset.basePrecio||0);
+  const basePaginas=Number(row.dataset.basePaginas||0);
+  const baseNombre=row.dataset.baseNombre||'';
+  const size=row.dataset.baseSize||null;
+  // Hojas adicionales
+  const precioHoja=_buscarPrecioHoja(size);
+  const costoHojas=nHoja*precioHoja;
+  const infoHoja=extDiv.querySelector('.pf-ext-info-hoja');
+  if(nHoja>0&&precioHoja>0) infoHoja.textContent=`${fmt(precioHoja)} × hoja → +${fmt(costoHojas)}`;
+  else if(nHoja>0) infoHoja.textContent='⚠ precio no encontrado en lista';
+  else infoHoja.textContent=precioHoja?`${fmt(precioHoja)} × hoja`:'';
+  // Plantillas de datos (precio por combo según cantidad)
+  const comboPrice=nPlant>0?_buscarPrecioPlantilla(nPlant):0;
+  const costoPlant=comboPrice;
+  const infoPlant=extDiv.querySelector('.pf-ext-info-plant');
+  if(nPlant>0&&comboPrice>0) infoPlant.textContent=`combo ×${nPlant} → +${fmt(comboPrice)}`;
+  else if(nPlant>0) infoPlant.textContent='⚠ precio no encontrado en lista';
+  else infoPlant.textContent='';
+  // El precio base del fotolibro se mantiene; los extras se acumulan en .pf-ext-cost
+  const extraCosto=costoHojas+costoPlant;
+  const totalPaginas=basePaginas+nHoja+nPlant;
+  const extCostInput=extDiv.querySelector('.pf-ext-cost');
+  if(extCostInput) extCostInput.value=extraCosto;
+  // Precio base del fotolibro NO se toca — solo se actualiza el nombre con las hojas correctas
+  const ni=row.querySelector('.pf-nombre');
+  ni.value=(nHoja>0||nPlant>0)&&baseNombre
+    ?baseNombre.replace(/(\()(\d+)(\s*(?:H\b|hojas?))/, `$1${totalPaginas}$3`)
+    :baseNombre||ni.value;
   recalc();
 }
 function toggleFotosExtras(){
@@ -2382,8 +2574,9 @@ function toggleFotosExtras(){
 function recalc(){
   const prodTotal=Array.from(document.querySelectorAll('.pf-row')).reduce((s,row)=>{
     const precio=Number(row.querySelector('.pf-price')?.value||0);
+    const extCosto=Number(row.querySelector('.pf-ext-cost')?.value||0);
     const cant=Math.max(1,Number(row.querySelector('.pf-cant')?.value||1));
-    return s+precio*cant;
+    return s+(precio+extCosto)*cant;
   },0);
   let fotosTotal=0;
   const fotosForm=document.getElementById('fotos-extras-form');
@@ -2406,7 +2599,9 @@ function guardarPedido(){
     const ni=row.querySelector('.pf-nombre');
     const nombre=ni?ni.value.trim():'';
     const codigo=ni?(ni.dataset.codigo||'PERSONALIZADO'):'PERSONALIZADO';
-    const precio=Number(row.querySelector('.pf-price')?.value)||0;
+    const precioBase=Number(row.querySelector('.pf-price')?.value)||0;
+    const extCosto=Number(row.querySelector('.pf-ext-cost')?.value||0);
+    const precio=precioBase+extCosto;
     const cant=Math.max(1,Number(row.querySelector('.pf-cant')?.value||1));
     if(nombre){
       for(let q=0;q<cant;q++){
@@ -2638,8 +2833,8 @@ function recalcFotos(){
 }
 
 // ── DB EDITABLE ──
-function getDBUser(){ try{return JSON.parse(localStorage.getItem('picabu_db_user')||'[]');}catch(e){return [];} }
-function saveDBUser(arr){ localStorage.setItem('picabu_db_user',JSON.stringify(arr)); }
+function getDBUser(){ if(window._dbProductos&&window._dbProductos.length)return window._dbProductos; try{return JSON.parse(localStorage.getItem('picabu_db_user')||'[]');}catch(e){return [];} }
+function saveDBUser(arr){ window._dbProductos=arr; localStorage.setItem('picabu_db_user',JSON.stringify(arr)); if(typeof window.saveProductosToFirebase==='function')window.saveProductosToFirebase(arr); }
 function getDBFull(){ return getDBUser(); }
 
 function renderDBConfig(){
