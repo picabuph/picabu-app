@@ -1179,7 +1179,11 @@ window.setPedidosFromFirebase = function(lista) {
         const localP = pedidos.find(lp => lp.bebe === p.bebe && lp.mama === p.mama);
         const localX = localP?.prods?.find(lx => lx.uid === x.uid || (lx.nombre === x.nombre && lx.cantIdx === x.cantIdx));
         return localX?.numPedido || '';
-      })()
+      })(),
+      ...(x.precioBase != null && {precioBase: Number(x.precioBase)}),
+      ...(x.extCosto != null && {extCosto: Number(x.extCosto)}),
+      ...(x.extHojas != null && {extHojas: Number(x.extHojas)}),
+      ...(x.extPlantillas != null && {extPlantillas: Number(x.extPlantillas)})
     }));
   });
   pedidos = lista;
@@ -1209,7 +1213,11 @@ function load() {
         uid: x.uid || ('u'+Date.now()+Math.random().toString(36).substr(2,6)),
         soloWA: x.soloWA || (x.codigo === 'FOTOS-EXTRA') || false,
         fotosDetalle: x.fotosDetalle || null,
-        numPedido: x.numPedido || ''
+        numPedido: x.numPedido || '',
+        ...(x.precioBase != null && {precioBase: Number(x.precioBase)}),
+        ...(x.extCosto != null && {extCosto: Number(x.extCosto)}),
+        ...(x.extHojas != null && {extHojas: Number(x.extHojas)}),
+        ...(x.extPlantillas != null && {extPlantillas: Number(x.extPlantillas)})
       }));
     });
   } catch(e) { pedidos = []; }
