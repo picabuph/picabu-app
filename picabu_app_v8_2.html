@@ -179,6 +179,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .pago-vacio { background:var(--arena-l); color:var(--marron); }
 .pago-pagado { background:#d4edda; color:#1a5c2a; }
 .pago-saldo { background:#fad7d7; color:#8b1a1a; }
+.pago-sinconfirmar { background:#fdf0d8; color:#8a5e20; }
 
 /* PROD ROW */
 .c-body { padding:4px 18px 10px; }
@@ -1092,6 +1093,14 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
     </div>
     <div class="total-box"><span class="total-label">Total</span><span class="total-val" id="total-rt">$0</span></div>
     <div class="fg"><label>Pagos / saldo</label><input type="text" id="f-pagos" placeholder="Ej: $250.000 TRF + saldo efectivo abril"></div>
+    <div class="fg"><label>Estado del pedido</label>
+      <select id="f-pago-status" style="border:1px solid var(--arena);border-radius:8px;padding:8px;font-family:'Montserrat',sans-serif;font-size:13px;background:#fff;width:100%;">
+        <option value="">Sin definir</option>
+        <option value="Sin confirmar">⏸ Sin confirmar (esperando pago)</option>
+        <option value="Saldo pendiente">Saldo pendiente</option>
+        <option value="Pagado">✓ Pagado</option>
+      </select>
+    </div>
     <div class="fg" style="margin-bottom:0;"><label>Notas generales</label><textarea id="f-notas" rows="2" placeholder="Datos de sesión, pendientes..."></textarea></div>
     <div id="eq-vinculo-section" style="display:none;background:#ede8f5;border:1px solid #c4b3e0;border-radius:10px;padding:10px 14px;margin-bottom:8px;">
       <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#6a4fa0;font-weight:600;margin-bottom:8px;">Equipo app</div>
@@ -1501,17 +1510,20 @@ function prodRowHtml(ci, x, pi, showPrecio, allowNameEdit, prefijo, pedido) {
   const nombreStr = (x.nombre||'').replace(/"/g,'&quot;');
   const nombreMostrar = (allowNameEdit && pedido) ? nombreDiseno(pedido, x) : (x.nombre||'');
   const esTraducido = nombreMostrar !== (x.nombre||'');
-  const nombreHtml = allowNameEdit
-    ? (esTraducido
-        ? `<div class="prod-nombre-edit" style="cursor:default;" title="Calculado automáticamente: ${(x.nombre||'').replace(/"/g,'&quot;')}">${nombreMostrar}</div>`
-        : `<input class="prod-nombre-edit" value="${nombreStr}" onblur="guardarNombreProd(${ci},${pi},this.value)" onclick="event.stopPropagation()">`)
-    : `<div class="prod-nombre">${x.nombre||''}</div>`;
-
-  const precioHtml = showPrecio ? `<div class="prod-precio">${fmt(x.precio)}</div>` : '';
 
   const cantBadge = (x.cantTotal && x.cantTotal > 1 && x.cantIdx === 0)
     ? `<span style="background:#7f6d67;color:#fff;border-radius:10px;padding:2px 7px;font-size:10px;font-weight:600;flex-shrink:0;">×${x.cantTotal}</span>`
     : '';
+
+  const nombreHtml = allowNameEdit
+    ? (esTraducido
+        ? `<div class="prod-nombre-edit" style="cursor:default;display:flex;align-items:center;gap:6px;" title="Calculado automáticamente: ${(x.nombre||'').replace(/"/g,'&quot;')}">${nombreMostrar}${cantBadge}</div>`
+        : cantBadge
+            ? `<div style="flex:1;display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;"><input class="prod-nombre-edit" style="flex:none;min-width:0;max-width:calc(100% - 36px);field-sizing:content;" value="${nombreStr}" onblur="guardarNombreProd(${ci},${pi},this.value)" onclick="event.stopPropagation()">${cantBadge}</div>`
+            : `<div style="flex:1;display:flex;align-items:center;gap:6px;min-width:0;"><input class="prod-nombre-edit" style="flex:1;min-width:0;" value="${nombreStr}" onblur="guardarNombreProd(${ci},${pi},this.value)" onclick="event.stopPropagation()"></div>`)
+    : `<div class="prod-nombre" style="display:flex;align-items:center;gap:6px;overflow:hidden;"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">${x.nombre||''}</span>${cantBadge}</div>`;
+
+  const precioHtml = showPrecio ? `<div class="prod-precio">${fmt(x.precio)}</div>` : '';
 
   // Ícono ficha (solo en Diseño) — izquierda
   const fichaTiene = allowNameEdit && !!x.proveedor;
@@ -1536,7 +1548,6 @@ function prodRowHtml(ci, x, pi, showPrecio, allowNameEdit, prefijo, pedido) {
     <span class="prod-drag" draggable="false">⠿</span>
     ${fichaBtn}
     ${nombreHtml}
-    ${cantBadge}
     ${precioHtml}
     <div class="nota-ico">${x.nota?'📝':''}</div>
     <div class="estado-wrap">
@@ -1575,7 +1586,7 @@ function editarNumPedido(ci, pi, el) {
 // ── CARD CLIENTE HTML ──
 function clienteCardHtml(p, i, showPrecio, allowNameEdit, soloProveedor) {
   const total = p.prods.reduce((s,x)=>s+Number(x.precio||0),0);
-  const pagoClass = p.pago==='Pagado'?'pago-pagado':p.pago==='Saldo pendiente'?'pago-saldo':'pago-vacio';
+  const pagoClass = p.pago==='Pagado'?'pago-pagado':p.pago==='Saldo pendiente'?'pago-saldo':p.pago==='Sin confirmar'?'pago-sinconfirmar':'pago-vacio';
   const prefijo = allowNameEdit ? 'depop' : 'epop';
   const vistos = new Set();
   const prodsVisibles = p.prods.filter(x => {
@@ -1628,8 +1639,9 @@ function clienteCardHtml(p, i, showPrecio, allowNameEdit, soloProveedor) {
         ${showPrecio?`<div class="c-total">${fmt(total)}</div>`:''}
         <select class="pago-sel ${pagoClass}" onchange="cambiarPago(${i},this.value)">
           <option value="" ${!p.pago?'selected':''}>Estado pago</option>
-          <option value="Pagado" ${p.pago==='Pagado'?'selected':''}>✓ Pagado</option>
+          <option value="Sin confirmar" ${p.pago==='Sin confirmar'?'selected':''}>⏸ Sin confirmar</option>
           <option value="Saldo pendiente" ${p.pago==='Saldo pendiente'?'selected':''}>Saldo pendiente</option>
+          <option value="Pagado" ${p.pago==='Pagado'?'selected':''}>✓ Pagado</option>
         </select>
       </div>
     </div>
@@ -1700,7 +1712,29 @@ function _findEquipoMatch(p) {
   return { match: null, candidatos: sesiones, tipo: 'ninguno' };
 }
 
-function pasarAEdicionEquipo(sesId, cantFotos) {
+function _notasParaRenu(prods) {
+  const lineas = [];
+  if (prods.some(p => /pack.*foto/i.test(p.nombre||'') || /fotos?\s+sin\s+editar/i.test(p.nombre||'')))
+    lineas.push('Pack de fotos sin editar incluido.');
+  if (prods.some(p => /video/i.test(p.nombre||'') || /backstage/i.test(p.nombre||'')))
+    lineas.push('Video de backstage incluido.');
+  return lineas.length ? lineas.join(' ') : null;
+}
+function _tieneVideoBackstage(prods) {
+  return prods.some(p => /video/i.test(p.nombre||'') || /backstage/i.test(p.nombre||''));
+}
+function _hayVideoEnForm() {
+  return Array.from(document.querySelectorAll('#prods-form .pf-nombre'))
+    .some(inp => /video/i.test(inp.value) || /backstage/i.test(inp.value));
+}
+function _actualizarVideoFotosCheck() {
+  const videoRow = document.getElementById('eq-video-fotos-row');
+  if (!videoRow) return;
+  const cant = parseInt(document.getElementById('eq-cant-fotos')?.value || 0);
+  videoRow.style.display = cant > 40 ? '' : 'none';
+}
+
+function pasarAEdicionEquipo(sesId, cantFotos, notasExtra, tieneVideo) {
   const lista = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : _eqSesiones;
   const idx = lista.findIndex(s => s.id === sesId);
   if (idx < 0) { console.warn('[equipo] sesión no encontrada:', sesId); return; }
@@ -1712,6 +1746,7 @@ function pasarAEdicionEquipo(sesId, cantFotos) {
     if (cantFotos) c.cantFotos = cantFotos;
   }
   c.tieneProductos = true;
+  if (notasExtra) c.notas = c.notas ? (c.notas + '\n' + notasExtra) : notasExtra;
   _eqSesiones = lista;
   if (typeof window.saveEquipoSesiones === 'function') window.saveEquipoSesiones(lista);
   renderSesionesAngie();
@@ -1726,7 +1761,14 @@ function actualizarVinculoEq() {
   if (!section || !content) return;
   if (!bebe && !mama) { section.style.display = 'none'; return; }
   const match = _findEquipoMatch({ bebe, mama });
-  const fotosHtml = `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#3d2e6b;">Fotos a editar <input type="number" id="eq-cant-fotos" min="1" placeholder="cant." style="width:70px;padding:3px 7px;border-radius:8px;border:1px solid #c4b3e0;font-size:12px;font-family:inherit;"></label>`;
+  const hayVideo = _hayVideoEnForm();
+  const videoFotosHtml = hayVideo ? `<div id="eq-video-fotos-row" style="display:none;margin-top:6px;padding:6px 10px;background:#f5eeff;border-radius:8px;border:1px solid #c4b3e0;">
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#5a2a7a;cursor:pointer;">
+      <input type="checkbox" id="eq-video-fotos-check" style="accent-color:#6a4fa0;">
+      El cliente ya eligió las 40 fotos para el video
+    </label>
+  </div>` : '';
+  const fotosHtml = `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#3d2e6b;">Fotos a editar <input type="number" id="eq-cant-fotos" min="1" placeholder="cant." style="width:70px;padding:3px 7px;border-radius:8px;border:1px solid #c4b3e0;font-size:12px;font-family:inherit;" oninput="_actualizarVideoFotosCheck()"></label>${videoFotosHtml}`;
   const _renderMatch = (s) => {
     const esPrevio = ESTADOS_PREVIOS_EQ.includes(s.estado);
     const label = esPrevio ? 'Pasar a edición Renu al guardar' : 'Vincular con equipo app al guardar';
@@ -2034,6 +2076,7 @@ function abrirEditar(ci) {
   document.getElementById('f-mama').value = p.mama;
   document.getElementById('f-pagos').value = p.pagos || '';
   document.getElementById('f-notas').value = p.notas || '';
+  document.getElementById('f-pago-status').value = p.pago || '';
   const container = document.getElementById('prods-form');
   container.innerHTML = '';
   // Agrupar productos por nombre+codigo+precio para mostrar cantidad
@@ -2086,13 +2129,22 @@ function abrirEditar(ci) {
 }
 
 function cambiarPago(ci, val) {
+  const pagoAnterior = pedidos[ci].pago;
   pedidos[ci].pago = val; save(ci);
-  const sels = document.querySelectorAll('.pago-sel');
-  // Update class without re-render
   const card = document.getElementById(`ccard-${ci}`);
   if (card) {
     const sel = card.querySelector('.pago-sel');
-    if (sel) sel.className = 'pago-sel '+(val==='Pagado'?'pago-pagado':val==='Saldo pendiente'?'pago-saldo':'pago-vacio');
+    if (sel) sel.className = 'pago-sel '+(val==='Pagado'?'pago-pagado':val==='Saldo pendiente'?'pago-saldo':val==='Sin confirmar'?'pago-sinconfirmar':'pago-vacio');
+  }
+  // Auto-derivar a Renu cuando el pedido pasa de "Sin confirmar" a pago real
+  if ((val==='Saldo pendiente'||val==='Pagado') && pagoAnterior==='Sin confirmar' && pedidos[ci].eqSesId) {
+    const p = pedidos[ci];
+    const notasExtra = _notasParaRenu(p.prods||[]);
+    const tieneVideo = _tieneVideoBackstage(p.prods||[]);
+    const videoFotosPendiente = tieneVideo && p.eqCantFotos && p.eqCantFotos > 40;
+    const notasFinal = [notasExtra, videoFotosPendiente ? '⚠️ Pendiente: el cliente debe elegir las 40 fotos para el video.' : null]
+      .filter(Boolean).join(' ') || null;
+    pasarAEdicionEquipo(p.eqSesId, p.eqCantFotos||null, notasFinal, tieneVideo);
   }
 }
 
@@ -2338,7 +2390,7 @@ function guardarEstados(){
 function abrirModal() {
   editCI = null;
   document.getElementById('modal-titulo').textContent = 'Nuevo pedido';
-  ['f-bebe','f-mama','f-pagos','f-notas'].forEach(id=>document.getElementById(id).value='');
+  ['f-bebe','f-mama','f-pagos','f-notas','f-pago-status'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('prods-form').innerHTML='';
   document.getElementById('total-rt').textContent='$0';
   document.getElementById('fotos-extras-form').style.display='none';
@@ -2620,24 +2672,48 @@ function guardarPedido(){
     }
   }
   if(!prods.length){alert('Agregá al menos un producto.');return;}
+  const pagoStatus = document.getElementById('f-pago-status')?.value || '';
+  const chk = document.getElementById('eq-pasar-check');
+  const eqSesId = (chk && chk.checked && chk.dataset.sesid) ? chk.dataset.sesid : null;
+  const eqCantFotos = eqSesId ? (parseInt(document.getElementById('eq-cant-fotos')?.value || 0) || null) : null;
+  const videoFotosCheck = document.getElementById('eq-video-fotos-check');
+  const videoFotosRow = document.getElementById('eq-video-fotos-row');
+  const videoFotosElegidas = videoFotosCheck?.checked || false;
+  const videoFotosVisible = videoFotosRow && videoFotosRow.style.display !== 'none';
+
   if(editCI!==null){
     const existing=pedidos[editCI];
     prods.forEach(np=>{
       const prev=existing.prods.find(op=>op.nombre===np.nombre);
       if(prev){np.estado=prev.estado;np.nota=prev.nota;np.proveedor=prev.proveedor;np.ultimoCambio=prev.ultimoCambio;}
     });
-    pedidos[editCI]={...existing,bebe,mama,prods,pagos:document.getElementById('f-pagos').value.trim(),notas:document.getElementById('f-notas').value.trim()};
+    pedidos[editCI]={...existing,bebe,mama,prods,
+      pagos:document.getElementById('f-pagos').value.trim(),
+      notas:document.getElementById('f-notas').value.trim(),
+      pago: pagoStatus,
+      eqSesId: eqSesId || existing.eqSesId || null,
+      eqCantFotos: eqCantFotos || existing.eqCantFotos || null
+    };
     const savedIdx = editCI;
     editCI=null;
     save(savedIdx); cerrarModal(); renderPedidos();
   } else {
-    pedidos.unshift({bebe,mama,fecha:new Date().toLocaleDateString('es-AR'),prods,pagos:document.getElementById('f-pagos').value.trim(),notas:document.getElementById('f-notas').value.trim(),pago:''});
+    pedidos.unshift({bebe,mama,fecha:new Date().toLocaleDateString('es-AR'),prods,
+      pagos:document.getElementById('f-pagos').value.trim(),
+      notas:document.getElementById('f-notas').value.trim(),
+      pago: pagoStatus,
+      eqSesId: eqSesId || null,
+      eqCantFotos: eqCantFotos || null
+    });
     save(0); cerrarModal(); renderPedidos();
   }
-  const chk = document.getElementById('eq-pasar-check');
-  if (chk && chk.checked && chk.dataset.sesid) {
-    const cant = parseInt(document.getElementById('eq-cant-fotos')?.value || 0) || null;
-    pasarAEdicionEquipo(chk.dataset.sesid, cant);
+  if (eqSesId && pagoStatus !== 'Sin confirmar') {
+    const notasExtra = _notasParaRenu(prods);
+    const tieneVideo = _tieneVideoBackstage(prods);
+    const videoFotosPendiente = tieneVideo && eqCantFotos && eqCantFotos > 40 && videoFotosVisible && !videoFotosElegidas;
+    const notasFinal = [notasExtra, videoFotosPendiente ? '⚠️ Pendiente: el cliente debe elegir las 40 fotos para el video.' : null]
+      .filter(Boolean).join(' ') || null;
+    pasarAEdicionEquipo(eqSesId, eqCantFotos, notasFinal, tieneVideo);
   }
 }
 
