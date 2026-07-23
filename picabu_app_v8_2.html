@@ -1533,9 +1533,9 @@ function prodRowHtml(ci, x, pi, showPrecio, allowNameEdit, prefijo, pedido) {
   const nombreHtml = allowNameEdit
     ? (esTraducido
         ? `<div class="prod-nombre-edit" style="cursor:default;display:flex;align-items:center;gap:6px;" title="Calculado automáticamente: ${(x.nombre||'').replace(/"/g,'&quot;')}">${nombreMostrar}${cantBadge}${extrasLabel}</div>`
-        : cantBadge
+        : (cantBadge || extrasLabel)
             ? `<div style="flex:1;display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;"><input class="prod-nombre-edit" style="flex:none;min-width:0;max-width:calc(100% - 36px);field-sizing:content;" value="${nombreStr}" onblur="guardarNombreProd(${ci},${pi},this.value)" onclick="event.stopPropagation()">${cantBadge}${extrasLabel}</div>`
-            : `<div style="flex:1;display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;"><input class="prod-nombre-edit" style="flex:1;min-width:0;" value="${nombreStr}" onblur="guardarNombreProd(${ci},${pi},this.value)" onclick="event.stopPropagation()">${extrasLabel}</div>`)
+            : `<div style="flex:1;display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;"><input class="prod-nombre-edit" style="flex:1;min-width:0;" value="${nombreStr}" onblur="guardarNombreProd(${ci},${pi},this.value)" onclick="event.stopPropagation()"></div>`)
     : `<div class="prod-nombre" style="display:flex;align-items:center;gap:6px;overflow:hidden;"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">${x.nombre||''}</span>${cantBadge}${extrasLabel}</div>`;
 
   const precioHtml = showPrecio ? `<div class="prod-precio">${fmt(x.precio)}</div>` : '';
@@ -1761,7 +1761,11 @@ function pasarAEdicionEquipo(sesId, cantFotos, notasExtra, tieneVideo) {
     if (cantFotos) c.cantFotos = cantFotos;
   }
   c.tieneProductos = true;
-  if (notasExtra) c.notas = c.notas ? (c.notas + '\n' + notasExtra) : notasExtra;
+  if (notasExtra) {
+    const existingNotas = c.notas || '';
+    const lineasNuevas = notasExtra.split('\n').filter(l => l.trim() && !existingNotas.includes(l.trim()));
+    if (lineasNuevas.length) c.notas = existingNotas ? (existingNotas + '\n' + lineasNuevas.join('\n')) : lineasNuevas.join('\n');
+  }
   _eqSesiones = lista;
   if (typeof window.saveEquipoSesiones === 'function') window.saveEquipoSesiones(lista);
   renderSesionesAngie();
@@ -2708,8 +2712,10 @@ function guardarPedido(){
   const videoFotosElegidas = videoFotosCheck?.checked || false;
   const videoFotosVisible = videoFotosRow && videoFotosRow.style.display !== 'none';
 
+  let existingEqSesId = null;
   if(editCI!==null){
     const existing=pedidos[editCI];
+    existingEqSesId = existing.eqSesId || null;
     prods.forEach(np=>{
       const prev=existing.prods.find(op=>op.nombre===np.nombre);
       if(prev){np.estado=prev.estado;np.nota=prev.nota;np.proveedor=prev.proveedor;np.ultimoCambio=prev.ultimoCambio;}
@@ -2734,7 +2740,9 @@ function guardarPedido(){
     });
     save(0); cerrarModal(); renderPedidos();
   }
-  if (eqSesId && pagoStatus !== 'Sin confirmar') {
+  // Solo derivar a Renu si es un vínculo NUEVO (no re-guardado del mismo sesId)
+  const isNewLink = eqSesId && eqSesId !== existingEqSesId;
+  if (isNewLink && pagoStatus !== 'Sin confirmar') {
     const notasExtra = _notasParaRenu(prods);
     const tieneVideo = _tieneVideoBackstage(prods);
     const videoFotosPendiente = tieneVideo && eqCantFotos && eqCantFotos > 40 && videoFotosVisible && !videoFotosElegidas;
