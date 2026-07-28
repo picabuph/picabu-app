@@ -287,6 +287,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .envio-prod { font-size:13px; color:var(--muted); }
 .envio-cliente { font-size:14px; font-weight:600; color:var(--marron-d); }
 .envio-precio { font-size:11px; color:var(--muted); }
+.envio-fecha-col { font-size:11px; color:var(--muted); flex-shrink:0; white-space:nowrap; align-self:center; padding-left:8px; }
 .despacho-chk { accent-color:var(--marron); width:16px; height:16px; cursor:pointer; flex-shrink:0; margin-top:2px; }
 .despacho-bar { margin-top:14px; padding-top:12px; border-top:1px solid var(--border); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .despacho-bar label { font-size:10px; color:var(--muted); letter-spacing:1.5px; text-transform:uppercase; white-space:nowrap; }
@@ -1049,6 +1050,27 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
       <div class="fecha-info-label">Sin cambios desde</div>
       <div class="fecha-info-val" id="pm-fecha-val"></div>
     </div>
+    <div class="fl" style="background:#eef5f0;border:1px solid #b3d4c8;border-radius:9px;padding:12px;gap:8px;">
+      <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#4a8a6a;font-weight:600;margin-bottom:8px;">📦 Plazos de entrega</div>
+      <!-- 1. Fotos elegidas -->
+      <div id="pm-fotos-row" style="display:none;margin-bottom:10px;">
+        <div style="font-size:10px;color:#4a8a6a;margin-bottom:2px;">Fotos elegidas</div>
+        <div id="pm-fotos-val" style="font-size:13px;font-weight:600;color:#2e6a50;"></div>
+      </div>
+      <!-- 2. Tope 60 días -->
+      <div id="pm-tope60-row" style="display:none;margin-bottom:10px;">
+        <div style="font-size:10px;color:#4a8a6a;margin-bottom:2px;">Tope 60 d</div>
+        <div id="pm-tope60-val" style="font-size:13px;font-weight:600;color:#2e6a50;"></div>
+      </div>
+      <!-- 3. Fecha de paso a producción -->
+      <div id="pm-prod-desde-row" style="display:none;margin-bottom:10px;">
+        <div style="font-size:10px;color:#4a8a6a;margin-bottom:2px;">En producción desde</div>
+        <div id="pm-prod-desde-val" style="font-size:13px;font-weight:600;color:#2e6a50;"></div>
+      </div>
+      <!-- 4. Fecha límite entrega al cliente (editable) -->
+      <div style="font-size:10px;color:#4a8a6a;margin-bottom:4px;">Fecha límite entrega al cliente</div>
+      <input type="date" id="pm-fecha-entrega" style="width:100%;padding:8px 10px;border:1px solid #b3d4c8;border-radius:8px;font-size:13px;font-family:inherit;background:#fff;color:var(--text);box-sizing:border-box;">
+    </div>
     <div class="fl">
       <label>Proveedor</label>
       <select id="pm-proveedor" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:9px;font-family:Montserrat,sans-serif;font-size:13px;background:var(--white);color:var(--text);cursor:pointer;">
@@ -1102,6 +1124,21 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
       </select>
     </div>
     <div class="fg" style="margin-bottom:0;"><label>Notas generales</label><textarea id="f-notas" rows="2" placeholder="Datos de sesión, pendientes..."></textarea></div>
+    <!-- Recordatorio video backstage — visible independientemente de equipo -->
+    <div id="video-reminder-section" style="display:none;background:#f5eeff;border:1px solid #c4b3e0;border-radius:10px;padding:10px 14px;margin-bottom:8px;">
+      <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#6a4fa0;font-weight:600;margin-bottom:8px;">📹 Video backstage</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#3d2e6b;">Fotos a editar
+          <input type="number" id="eq-cant-fotos" min="1" placeholder="cant." style="width:70px;padding:3px 7px;border-radius:8px;border:1px solid #c4b3e0;font-size:12px;font-family:inherit;" oninput="_actualizarVideoFotosCheck()">
+        </label>
+        <div id="eq-video-fotos-row" style="display:none;padding:6px 8px;background:#ede8f5;border-radius:8px;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#5a2a7a;cursor:pointer;">
+            <input type="checkbox" id="eq-video-fotos-check" style="accent-color:#6a4fa0;">
+            El cliente ya eligió las 40 fotos para el video
+          </label>
+        </div>
+      </div>
+    </div>
     <div id="eq-vinculo-section" style="display:none;background:#ede8f5;border:1px solid #c4b3e0;border-radius:10px;padding:10px 14px;margin-bottom:8px;">
       <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#6a4fa0;font-weight:600;margin-bottom:8px;">Equipo app</div>
       <div id="eq-vinculo-content"></div>
@@ -1183,7 +1220,9 @@ window.setPedidosFromFirebase = function(lista) {
       ...(x.precioBase != null && {precioBase: Number(x.precioBase)}),
       ...(x.extCosto != null && {extCosto: Number(x.extCosto)}),
       ...(x.extHojas != null && {extHojas: Number(x.extHojas)}),
-      ...(x.extPlantillas != null && {extPlantillas: Number(x.extPlantillas)})
+      ...(x.extPlantillas != null && {extPlantillas: Number(x.extPlantillas)}),
+      ...(x.fechaEnProduccion != null && {fechaEnProduccion: x.fechaEnProduccion}),
+      ...(x.fechaLimiteEntrega != null && {fechaLimiteEntrega: x.fechaLimiteEntrega})
     }));
   });
   pedidos = lista;
@@ -1217,7 +1256,9 @@ function load() {
         ...(x.precioBase != null && {precioBase: Number(x.precioBase)}),
         ...(x.extCosto != null && {extCosto: Number(x.extCosto)}),
         ...(x.extHojas != null && {extHojas: Number(x.extHojas)}),
-        ...(x.extPlantillas != null && {extPlantillas: Number(x.extPlantillas)})
+        ...(x.extPlantillas != null && {extPlantillas: Number(x.extPlantillas)}),
+        ...(x.fechaEnProduccion != null && {fechaEnProduccion: x.fechaEnProduccion}),
+        ...(x.fechaLimiteEntrega != null && {fechaLimiteEntrega: x.fechaLimiteEntrega})
       }));
     });
   } catch(e) { pedidos = []; }
@@ -1334,6 +1375,16 @@ function sincronizarBackup() {
 }
 
 function fmt(n) { return '$'+Number(n).toLocaleString('es-AR'); }
+function fmtFechaCorta(iso) {
+  if (!iso) return '?';
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}`;
+}
+function fmtFechaLarga(iso) {
+  if (!iso) return '';
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
 function getSheetsURL() { return localStorage.getItem('picabu_sheets_url')||SHEETS_URL_DEFAULT; }
 function getDias() { return parseInt(localStorage.getItem('picabu_dias')||'2'); }
 
@@ -1451,6 +1502,13 @@ function selEstado(ci, pi, nombre, prefijo) {
   const hoy = new Date().toLocaleDateString('es-AR');
   pedidos[ci].prods[pi].estado = nombre;
   pedidos[ci].prods[pi].ultimoCambio = hoy;
+  const esEnProduccionNuevo = nombre === 'En producción' && !pedidos[ci].prods[pi].fechaEnProduccion;
+  if (esEnProduccionNuevo) {
+    const hoyISO = new Date().toISOString().split('T')[0];
+    pedidos[ci].prods[pi].fechaEnProduccion = hoyISO;
+    const limite = new Date(); limite.setDate(limite.getDate() + 30);
+    pedidos[ci].prods[pi].fechaLimiteEntrega = limite.toISOString().split('T')[0];
+  }
   save(ci);
   const pop = document.getElementById(`${prefijo}-${ci}-${pi}`);
   if (pop) pop.classList.remove('open');
@@ -1458,6 +1516,8 @@ function selEstado(ci, pi, nombre, prefijo) {
   // Re-render current tab
   const activeTab = document.querySelector('.tab.active')?.textContent.trim();
   if (activeTab === 'Diseño') renderDiseno(); else renderPedidos();
+  // Si es la primera vez que pasa a En producción, abrir ficha del producto
+  if (esEnProduccionNuevo) setTimeout(() => abrirPModal(ci, pi), 80);
 }
 
 document.addEventListener('click', e => {
@@ -1772,6 +1832,12 @@ function pasarAEdicionEquipo(sesId, cantFotos, notasExtra, tieneVideo) {
   renderPedidos();
 }
 
+function actualizarVideoReminder() {
+  const section = document.getElementById('video-reminder-section');
+  if (!section) return;
+  section.style.display = _hayVideoEnForm() ? '' : 'none';
+}
+
 function actualizarVinculoEq() {
   const bebe = document.getElementById('f-bebe')?.value.trim() || '';
   const mama = document.getElementById('f-mama')?.value.trim() || '';
@@ -1780,25 +1846,16 @@ function actualizarVinculoEq() {
   if (!section || !content) return;
   if (!bebe && !mama) { section.style.display = 'none'; return; }
   const match = _findEquipoMatch({ bebe, mama });
-  const hayVideo = _hayVideoEnForm();
-  const videoFotosHtml = hayVideo ? `<div id="eq-video-fotos-row" style="display:none;margin-top:6px;padding:6px 10px;background:#f5eeff;border-radius:8px;border:1px solid #c4b3e0;">
-    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#5a2a7a;cursor:pointer;">
-      <input type="checkbox" id="eq-video-fotos-check" style="accent-color:#6a4fa0;">
-      El cliente ya eligió las 40 fotos para el video
-    </label>
-  </div>` : '';
-  const fotosHtml = `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#3d2e6b;">Fotos a editar <input type="number" id="eq-cant-fotos" min="1" placeholder="cant." style="width:70px;padding:3px 7px;border-radius:8px;border:1px solid #c4b3e0;font-size:12px;font-family:inherit;" oninput="_actualizarVideoFotosCheck()"></label>${videoFotosHtml}`;
   const _renderMatch = (s) => {
     const esPrevio = ESTADOS_PREVIOS_EQ.includes(s.estado);
     const label = esPrevio ? 'Pasar a edición Renu al guardar' : 'Vincular con equipo app al guardar';
-    const extras = esPrevio ? fotosHtml : '';
     return `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
       <span style="font-size:12px;color:#3d2e6b;"><strong>${s.bebe}</strong> · ${s.mama}</span>
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#3d2e6b;cursor:pointer;">
         <input type="checkbox" id="eq-pasar-check" data-sesid="${s.id}" checked style="accent-color:#6a4fa0;">
         ${label}
       </label>
-      ${extras}</div>`;
+    </div>`;
   };
   if (match.tipo === 'auto') {
     section.style.display = '';
@@ -1815,7 +1872,7 @@ function actualizarVinculoEq() {
         <input type="checkbox" id="eq-pasar-check" data-sesid="" style="accent-color:#6a4fa0;">
         Vincular con equipo app al guardar
       </label>
-      ${fotosHtml}</div>`;
+    </div>`;
     document.getElementById('eq-vinculo-sel').addEventListener('change', function() {
       const chk = document.getElementById('eq-pasar-check');
       if (chk) { chk.dataset.sesid = this.value; chk.checked = !!this.value; }
@@ -2066,6 +2123,31 @@ function abrirPModal(ci, pi) {
   } else {
     fechaBox.style.display = 'none';
   }
+  const desdeRow = document.getElementById('pm-prod-desde-row');
+  if (x.fechaEnProduccion) {
+    desdeRow.style.display = 'block';
+    document.getElementById('pm-prod-desde-val').textContent = fmtFechaLarga(x.fechaEnProduccion);
+  } else {
+    desdeRow.style.display = 'none';
+  }
+  document.getElementById('pm-fecha-entrega').value = x.fechaLimiteEntrega || '';
+  // Referencia: fecha selección fotos + tope 60 días (desde sesión vinculada)
+  const sesiones = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : [];
+  const pedido = pedidos[ci];
+  const sesLinked = pedido.eqSesId ? sesiones.find(s => s.id === pedido.eqSesId) : null;
+  const fotosRow = document.getElementById('pm-fotos-row');
+  const tope60Row = document.getElementById('pm-tope60-row');
+  if (sesLinked && sesLinked.fechaConfirmacion) {
+    const f60 = new Date(sesLinked.fechaConfirmacion + 'T12:00');
+    f60.setDate(f60.getDate() + 60);
+    document.getElementById('pm-fotos-val').textContent = fmtFechaLarga(sesLinked.fechaConfirmacion);
+    document.getElementById('pm-tope60-val').textContent = fmtFechaLarga(f60.toISOString().split('T')[0]);
+    fotosRow.style.display = 'block';
+    tope60Row.style.display = 'block';
+  } else {
+    fotosRow.style.display = 'none';
+    tope60Row.style.display = 'none';
+  }
   document.getElementById('pmodal').classList.add('open');
 }
 
@@ -2076,6 +2158,9 @@ function guardarPModal() {
   const {ci,pi} = pmEdit;
   pedidos[ci].prods[pi].nota = document.getElementById('pm-nota').value.trim();
   pedidos[ci].prods[pi].proveedor = document.getElementById('pm-proveedor').value.trim();
+  const fechaEnt = document.getElementById('pm-fecha-entrega').value;
+  if (fechaEnt) pedidos[ci].prods[pi].fechaLimiteEntrega = fechaEnt;
+  else delete pedidos[ci].prods[pi].fechaLimiteEntrega;
   save(ci); cerrarPModal();
   const activeTab = document.querySelector('.tab.active')?.textContent.trim();
   if (activeTab==='Diseño') renderDiseno(); else renderPedidos();
@@ -2152,7 +2237,13 @@ function abrirEditar(ci) {
     document.getElementById('fotos-res').textContent = '';
   }
   recalc();
+  actualizarVideoReminder();
   actualizarVinculoEq();
+  // Pre-llenar cantidad de fotos si el pedido ya tiene un vínculo con equipo
+  if (p.eqCantFotos) {
+    const cantFotosInput = document.getElementById('eq-cant-fotos');
+    if (cantFotosInput) { cantFotosInput.value = p.eqCantFotos; _actualizarVideoFotosCheck(); }
+  }
   document.getElementById('modal').classList.add('open');
   document.getElementById('btn-eliminar-pedido').style.display = 'inline-block';
 }
@@ -2242,7 +2333,7 @@ function renderEnvio() {
     if (x.estado === 'En producción' && !esPlantilla(x.nombre)) {
       const prov = x.proveedor || 'Sin proveedor asignado';
       if (!grupos[prov]) grupos[prov] = [];
-      grupos[prov].push({ prod: nombreDiseno(p, x), cliente: p.bebe, mama: p.mama, nped: x.numPedido || '', precio: x.precio || 0 });
+      grupos[prov].push({ prod: nombreDiseno(p, x), cliente: p.bebe, mama: p.mama, nped: x.numPedido || '', precio: x.precio || 0, fechaLimiteEntrega: x.fechaLimiteEntrega || '' });
     }
   }));
 
@@ -2255,8 +2346,8 @@ function renderEnvio() {
       const itemsHtml = items.map(it => {
         const npedHtml = it.nped ? `<span style="font-size:11px;background:#d4c8bf;color:#3a2e2a;border-radius:4px;padding:1px 6px;margin-left:6px;font-weight:600;">#${it.nped}</span>` : '';
         const chk = esCOPY ? `<input type="checkbox" class="despacho-chk" data-item='${JSON.stringify(it).replace(/'/g,"&#39;")}'>` : '';
-        const precio = esCOPY ? `<div class="envio-precio">${fmt(it.precio)}</div>` : '';
-        return `<div class="envio-row">${chk}<div class="envio-row-info"><div class="envio-cliente">${it.cliente} · ${it.mama}</div><div class="envio-prod">${it.prod}${npedHtml}</div>${precio}</div></div>`;
+        const fechaCol = it.fechaLimiteEntrega ? `<div class="envio-fecha-col">📦 ${fmtFechaLarga(it.fechaLimiteEntrega)}</div>` : '';
+        return `<div class="envio-row">${chk}<div class="envio-row-info"><div class="envio-cliente">${it.cliente} · ${it.mama}</div><div class="envio-prod">${it.prod}${npedHtml}</div></div>${fechaCol}</div>`;
       }).join('');
       const hoy = new Date().toISOString().split('T')[0];
       const despachoBar = esCOPY ? `<div class="despacho-bar"><label>Fecha de despacho</label><input type="date" id="despacho-fecha" value="${hoy}"><button class="btn-despacho" onclick="confirmarDespachoFn()">Confirmar despacho</button></div>` : '';
@@ -2270,11 +2361,10 @@ function renderEnvio() {
     html += `<div class="historial-titulo">Historial de despachos COPY</div>`;
     html += despachos.map(d => {
       const fechaFmt = d.fecha ? new Date(d.fecha + 'T12:00').toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit', year:'numeric'}) : '—';
-      const totalFmt = fmt(d.total || 0);
       const pagoClass = d.pago === 'realizado' ? 'realizado' : 'pendiente';
       return `<div class="despacho-card">
         <div class="despacho-card-head">
-          <div><span class="despacho-card-fecha">${fechaFmt}</span><span class="despacho-card-meta">${d.items.length} producto${d.items.length !== 1 ? 's' : ''} · ${totalFmt}</span></div>
+          <div><span class="despacho-card-fecha">${fechaFmt}</span><span class="despacho-card-meta">${d.items.length} producto${d.items.length !== 1 ? 's' : ''}</span></div>
           <div class="despacho-card-acciones">
             <select class="despacho-pago-sel ${pagoClass}" onchange="cambiarPagoDespacho('${d.id}',this.value)">
               <option value="pendiente" ${d.pago==='pendiente'?'selected':''}>Pago pendiente</option>
@@ -2291,7 +2381,6 @@ function renderEnvio() {
                 <span class="despacho-item-cliente">${it.cliente} · ${it.mama}</span>
                 <span class="despacho-item-prod">${it.prod}${npedHtml}</span>
               </div>
-              <span class="despacho-item-precio">${fmt(it.precio)}</span>
             </div>`;
           }).join('')}
         </div>
@@ -2430,7 +2519,7 @@ function abrirModal() {
   document.getElementById('modal').classList.add('open');
   document.getElementById('btn-eliminar-pedido').style.display='none';
 }
-function cerrarModal(){document.getElementById('modal').classList.remove('open'); document.getElementById('btn-eliminar-pedido').style.display='none'; editCI=null; const s=document.getElementById('eq-vinculo-section'); if(s) s.style.display='none';}
+function cerrarModal(){document.getElementById('modal').classList.remove('open'); document.getElementById('btn-eliminar-pedido').style.display='none'; editCI=null; const s=document.getElementById('eq-vinculo-section'); if(s) s.style.display='none'; const vr=document.getElementById('video-reminder-section'); if(vr) vr.style.display='none';}
 function eliminarPedido(){
   if(!confirm('¿Eliminar este pedido? Esta acción no se puede deshacer.')) return;
   pedidos.splice(editCI,1);
@@ -2667,6 +2756,7 @@ function recalc(){
     if(cant>0) fotosTotal=getPrecioFotos(tipo,cant)*cant;
   }
   document.getElementById('total-rt').textContent=fmt(prodTotal+fotosTotal);
+  if (typeof actualizarVideoReminder === 'function') actualizarVideoReminder();
 }
 
 function guardarPedido(){
