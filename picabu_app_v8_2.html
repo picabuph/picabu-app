@@ -2134,13 +2134,18 @@ function abrirPModal(ci, pi) {
   // Referencia: fecha selección fotos + tope 60 días (desde sesión vinculada)
   const sesiones = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : [];
   const pedido = pedidos[ci];
-  const sesLinked = pedido.eqSesId ? sesiones.find(s => s.id === pedido.eqSesId) : null;
+  const sesPorId = pedido.eqSesId ? sesiones.find(s => s.id === pedido.eqSesId) : null;
+  const sesPorNombre = sesiones.find(s =>
+    s.mama && s.mama.toLowerCase() === (pedido.mama||'').toLowerCase() &&
+    s.bebe && s.bebe.toLowerCase().includes((pedido.bebe||'').toLowerCase())
+  );
+  const sesMatch = sesPorId || sesPorNombre;
   const fotosRow = document.getElementById('pm-fotos-row');
   const tope60Row = document.getElementById('pm-tope60-row');
-  if (sesLinked && sesLinked.fechaConfirmacion) {
-    const f60 = new Date(sesLinked.fechaConfirmacion + 'T12:00');
+  if (sesMatch && sesMatch.fechaConfirmacion) {
+    const f60 = new Date(sesMatch.fechaConfirmacion + 'T12:00');
     f60.setDate(f60.getDate() + 60);
-    document.getElementById('pm-fotos-val').textContent = fmtFechaLarga(sesLinked.fechaConfirmacion);
+    document.getElementById('pm-fotos-val').textContent = fmtFechaLarga(sesMatch.fechaConfirmacion);
     document.getElementById('pm-tope60-val').textContent = fmtFechaLarga(f60.toISOString().split('T')[0]);
     fotosRow.style.display = 'block';
     tope60Row.style.display = 'block';
