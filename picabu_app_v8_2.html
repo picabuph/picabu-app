@@ -473,11 +473,11 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .adel-section-label { font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:#7a4e0a; font-weight:700; }
 .adel-count-badge { background:#e8c06a; color:#5a3a00; border-radius:10px; padding:1px 8px; font-size:10px; font-weight:600; }
 .adel-card { background:#fdf3dc; border:1px solid #e8c06a; border-radius:12px; margin-bottom:6px; overflow:hidden; }
-.adel-card .c-header { background:#fdf3dc; border-bottom:1px solid #f0d89a; padding:8px 12px; gap:8px; }
-.adel-card .c-footer { background:#fdf3dc; border-top:1px solid #f0d89a; padding:6px 12px; }
-.adel-badge { font-size:9px; background:#fff3cd; color:#7a4e0a; border-radius:5px; padding:2px 7px; font-weight:600; }
+.adel-card .c-header { background:#fdf3dc; border-bottom:1px solid #f0d89a; padding:6px 10px; gap:6px; }
+.adel-card .c-footer { background:#fdf3dc; border-top:1px solid #f0d89a; padding:4px 10px; }
+.adel-badge { font-size:9px; background:#fff3cd; color:#7a4e0a; border-radius:5px; padding:1px 6px; font-weight:600; }
 .adel-badge-fotos { background:#e8c06a; color:#5a3a00; }
-.adel-info-row { display:flex; gap:12px; flex-wrap:wrap; padding:5px 12px; border-top:1px solid #f0d89a; }
+.adel-info-row { display:flex; gap:10px; flex-wrap:wrap; padding:4px 10px; border-top:1px solid #f0d89a; }
 .adel-confirm-box { background:#fffaea; border-top:1px solid #f0d89a; padding:10px 12px; }
 .adel-confirm-q { font-size:12px; font-weight:600; color:#7a4e0a; margin-bottom:8px; }
 .adel-nota-expanded { background:#fffaea; border-top:1px solid #f0d89a; padding:7px 12px; font-size:11px; color:#5a4a40; line-height:1.5; }
@@ -491,9 +491,9 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .adel-notif-title { font-weight:700; font-size:12px; color:#5a3a00; margin-bottom:2px; }
 .adel-notif-ok { font-size:10px; padding:4px 12px; border-radius:7px; border:1px solid #c9a000; background:#ffe066; color:#5a3a00; cursor:pointer; font-family:'Montserrat',sans-serif; font-weight:600; flex-shrink:0; margin-top:2px; }
 /* Modal solicitar adelanto */
-.adel-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:9000; align-items:flex-end; justify-content:center; }
+.adel-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:9000; align-items:center; justify-content:center; padding:16px; }
 .adel-modal-overlay.open { display:flex; }
-.adel-modal { background:var(--white); border-radius:18px 18px 0 0; padding:20px 18px 32px; width:100%; max-width:520px; }
+.adel-modal { background:var(--white); border-radius:18px; padding:20px 18px 24px; width:100%; max-width:480px; }
 .adel-modal-title { font-size:13px; font-weight:700; color:var(--marron-d); margin-bottom:14px; }
 .adel-modal .fg { margin-bottom:10px; }
 .adel-modal .fg label { font-size:11px; color:var(--muted); display:block; margin-bottom:3px; letter-spacing:0.5px; }
@@ -1205,6 +1205,19 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
   </div>
 </div>
 
+<!-- Modal confirmación obligatoria edición terminada -->
+<div id="adel-confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9200;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:var(--white);border-radius:18px;padding:24px 20px 20px;width:100%;max-width:340px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+    <div style="font-size:22px;margin-bottom:10px;">📦</div>
+    <div style="font-size:14px;font-weight:700;color:#3a2e2a;margin-bottom:6px;">¿Ya enviaste las fotos a Angie?</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:20px;">Si todavía no, el estado vuelve a Edición Renu.</div>
+    <div style="display:flex;gap:10px;">
+      <button onclick="adel_confirmarModalNo()" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:10px;background:none;font-family:'Montserrat',sans-serif;font-size:12px;cursor:pointer;color:var(--muted);">No, todavía</button>
+      <button onclick="adel_confirmarModalSi()" style="flex:2;padding:10px;border:none;border-radius:10px;background:#5a9a6a;font-family:'Montserrat',sans-serif;font-size:12px;font-weight:700;cursor:pointer;color:#fff;">Sí, ya envié ✓</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal solicitar adelanto (global / desde card equipo) -->
 <div class="adel-modal-overlay" id="adel-modal">
   <div class="adel-modal">
@@ -1897,9 +1910,11 @@ function _actualizarVideoFotosCheck() {
 
 function pasarAEdicionEquipo(sesId, cantFotos, notasExtra, tieneVideo) {
   const lista = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : _eqSesiones;
+  console.log('[equipo] pasarAEdicionEquipo llamada — sesId:', sesId, '| sesiones cargadas:', lista.length);
   const idx = lista.findIndex(s => s.id === sesId);
   if (idx < 0) { console.warn('[equipo] sesión no encontrada:', sesId); return; }
   const c = lista[idx];
+  console.log('[equipo] sesión encontrada:', c.bebe, '| estado actual:', c.estado, '| puede cambiar:', ESTADOS_PREVIOS_EQ.includes(c.estado));
   if (ESTADOS_PREVIOS_EQ.includes(c.estado)) {
     c.estado = 'edicion_renu';
     c.fechaConfirmacion = eq_hoy();
@@ -2902,8 +2917,16 @@ function guardarPedido(){
     const existing=pedidos[editCI];
     existingEqSesId = existing.eqSesId || null;
     prods.forEach(np=>{
-      const prev=existing.prods.find(op=>op.nombre===np.nombre);
-      if(prev){np.estado=prev.estado;np.nota=prev.nota;np.proveedor=prev.proveedor;np.ultimoCambio=prev.ultimoCambio;}
+      const prev=existing.prods.find(op=>op.nombre===np.nombre&&(op.cantIdx===np.cantIdx||op.cantIdx==null));
+      if(prev){
+        np.estado=prev.estado;
+        np.nota=prev.nota;
+        np.proveedor=prev.proveedor;
+        np.ultimoCambio=prev.ultimoCambio;
+        if(prev.numPedido) np.numPedido=prev.numPedido;
+        if(prev.fechaEnProduccion!=null) np.fechaEnProduccion=prev.fechaEnProduccion;
+        if(prev.fechaLimiteEntrega!=null) np.fechaLimiteEntrega=prev.fechaLimiteEntrega;
+      }
     });
     pedidos[editCI]={...existing,bebe,mama,prods,
       pagos:document.getElementById('f-pagos').value.trim(),
@@ -2927,6 +2950,7 @@ function guardarPedido(){
   }
   // Solo derivar a Renu si es un vínculo NUEVO (no re-guardado del mismo sesId)
   const isNewLink = eqSesId && eqSesId !== existingEqSesId;
+  console.log('[equipo] guardarPedido — eqSesId:', eqSesId, '| existingEqSesId:', existingEqSesId, '| isNewLink:', isNewLink, '| pagoStatus:', pagoStatus);
   if (isNewLink && pagoStatus !== 'Sin confirmar') {
     const notasExtra = _notasParaRenu(prods);
     const tieneVideo = _tieneVideoBackstage(prods);
@@ -3897,47 +3921,138 @@ function _adelAddToSesion(sesId, adelanto) {
   return true;
 }
 
-function renderAdelantosPendientes() {
-  const pendientes = _adelGetAll().filter(a => a.estado === 'pendiente' || a.estado === 'confirmando');
-  if (!pendientes.length) return '';
-  let html = `<div class="adel-section-hdr">
-    <span class="adel-section-label">Adelantos pendientes</span>
-    <span class="adel-count-badge">${pendientes.length}</span>
+const _ADEL_ESTADOS = [
+  { id: 'edicion_renu',      label: 'Edición Renu',      bg: '#d4b3d7' },
+  { id: 'edicion_terminada', label: 'Edición terminada', bg: '#c4a0c7' },
+  { id: 'subidas',           label: 'Subidas ✓',         bg: '#d4edda' },
+];
+
+function adelEstadoBtn(sesId, adelId, estadoActual) {
+  const allE = eq_getEstados();
+  const gc = id => { const s = allE.find(x => x.id === id); return s ? s.bg : (EQ_BG_DEFAULT[id] || '#e8e0d4'); };
+  const e = _ADEL_ESTADOS.find(x => x.id === estadoActual) || _ADEL_ESTADOS[0];
+  const opts = _ADEL_ESTADOS.map(s =>
+    `<button onclick="adel_cambiarEstado('${sesId}','${adelId}','${s.id}')"
+      style="display:block;width:100%;text-align:left;padding:6px 10px;background:${s.id===estadoActual?gc(s.id):'none'};border:none;border-radius:7px;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;color:#3a2e2a;">${s.label}</button>`
+  ).join('');
+  return `<div class="estado-wrap">
+    <button class="estado-btn" style="background:${gc(e.id)};color:#3a2e2a;"
+      onclick="event.stopPropagation();adel_toggleEstadoPop('${adelId}')">
+      <span class="estado-btn-lbl">${e.label}</span>
+    </button>
+    <div class="estado-pop" id="adel-epop-${adelId}" style="position:fixed">${opts}</div>
   </div>`;
-  pendientes.forEach(a => {
-    const confirmando = a.estado === 'confirmando';
-    const limiteTxt = a.fechaLimite ? `<div class="adel-info-row"><div class="eq-info-item"><span class="eq-info-label">Fecha límite</span><span class="eq-info-val" style="color:#c97b00;font-weight:700;">${eq_fmt(a.fechaLimite)}</span></div></div>` : '';
-    const notaToggle = a.nota ? `<button class="eq-btn-accion" style="font-size:9px;padding:3px 8px;border-color:#e8c06a;color:#7a4e0a;" onclick="adel_toggleNota('${a.id}')">Ver detalle ▾</button>` : '';
-    const notaDiv = a.nota ? `<div class="adel-nota-expanded" id="adel-nota-${a.id}" style="display:none;">${a.nota}</div>` : '';
-    const confirmBox = confirmando ? `<div class="adel-confirm-box">
-      <div class="adel-confirm-q">¿Enviaste las fotos a Angie?</div>
-      <div style="display:flex;gap:8px;">
-        <button class="eq-btn-accion" style="background:#d4f0e0;color:#2a6a47;border-color:#a8dbbf;" onclick="adel_confirmarEnvio('${a._sesId}','${a.id}')">Sí, envié</button>
-        <button class="eq-btn-accion" onclick="adel_cancelarConfirm('${a._sesId}','${a.id}')">Todavía no</button>
-      </div>
-    </div>` : '';
-    const footerContent = !confirmando
-      ? `<button class="eq-btn-accion" style="background:#eef7f0;color:#2e7a55;border-color:#a8dbbf;" onclick="adel_iniciarConfirm('${a._sesId}','${a.id}')">✓ Marcar completado</button>${notaToggle}<span style="margin-left:auto;font-size:10px;color:#ccc;">☁ sincronizado</span>`
-      : `<span style="font-size:10px;color:#c97b00;font-weight:500;">Esperando confirmación...</span>`;
-    html += `<div class="adel-card">
-      <div class="c-header" style="background:#fdf3dc;border-bottom:1px solid #f0d89a;padding:8px 12px;gap:8px;display:flex;align-items:center;">
-        <div style="flex:1;min-width:0;">
-          <div style="display:flex;align-items:baseline;gap:6px;"><span style="font-size:13px;font-weight:600;color:#3a2e2a;">${a._bebeNombre||'—'}</span>${a._mamaNombre?`<span style="font-size:11px;color:#9e8c80;">${a._mamaNombre}</span>`:''}</div>
-          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;">
-            <span class="adel-badge">Adelanto</span>
-            ${a.cantFotos?`<span class="adel-badge adel-badge-fotos">${a.cantFotos} foto${a.cantFotos!=1?'s':''}</span>`:''}
+}
+
+function adel_toggleEstadoPop(adelId) {
+  const id = 'adel-epop-' + adelId;
+  document.querySelectorAll('.estado-pop.open').forEach(p => { if (p.id !== id) p.classList.remove('open'); });
+  const pop = document.getElementById(id);
+  if (!pop) return;
+  const opening = !pop.classList.contains('open');
+  if (opening) {
+    const btn = pop.previousElementSibling;
+    if (btn) {
+      const r = btn.getBoundingClientRect();
+      pop.style.top = (r.bottom + 4) + 'px';
+      pop.style.left = Math.max(4, r.right - 180) + 'px';
+    }
+  }
+  pop.classList.toggle('open', opening);
+}
+
+let _adelConfirmSesId = null, _adelConfirmAdelId = null;
+
+function adel_cambiarEstado(sesId, adelId, nuevoEstado) {
+  document.querySelectorAll('.estado-pop.open').forEach(p => p.classList.remove('open'));
+  if (nuevoEstado === 'edicion_terminada') {
+    _adelUpdateOnSesion(sesId, adelId, { estado: 'edicion_terminada' });
+    renderSesionesAngie();
+    _adelConfirmSesId = sesId; _adelConfirmAdelId = adelId;
+    document.getElementById('adel-confirm-modal').style.display = 'flex';
+  } else {
+    _adelUpdateOnSesion(sesId, adelId, { estado: nuevoEstado });
+    renderSesionesAngie();
+  }
+}
+
+function adel_confirmarModalSi() {
+  document.getElementById('adel-confirm-modal').style.display = 'none';
+  if (_adelConfirmSesId && _adelConfirmAdelId) {
+    _adelUpdateOnSesion(_adelConfirmSesId, _adelConfirmAdelId, { estado: 'enviado_angie', enviadoEn: new Date().toISOString() });
+    renderSesionesAngie();
+    adel_renderNotifAngie();
+  }
+  _adelConfirmSesId = null; _adelConfirmAdelId = null;
+}
+
+function adel_confirmarModalNo() {
+  document.getElementById('adel-confirm-modal').style.display = 'none';
+  if (_adelConfirmSesId && _adelConfirmAdelId) {
+    _adelUpdateOnSesion(_adelConfirmSesId, _adelConfirmAdelId, { estado: 'edicion_renu' });
+    renderSesionesAngie();
+  }
+  _adelConfirmSesId = null; _adelConfirmAdelId = null;
+}
+
+function renderAdelantosPendientes() {
+  const pendientes = _adelGetAll().filter(a => !['enviado_angie','completado'].includes(a.estado));
+  if (!pendientes.length) return '';
+
+  const cards = pendientes.map(a => {
+    const estadoNorm = (a.estado === 'pendiente' || a.estado === 'confirmando') ? 'edicion_renu' : a.estado;
+
+    let fechaHtml = '';
+    if (a.fechaLimite) {
+      const dE = eq_diasHasta(a.fechaLimite);
+      const bc = dE < 0 ? '#c94040' : dE <= 5 ? '#e05050' : dE <= 10 ? '#e0a030' : '#c97b00';
+      const dTxt = dE < 0
+        ? `<span style="font-size:11px;color:#c94040;margin-left:4px">(${Math.abs(dE)} días)</span>`
+        : dE === 0 ? `<span style="font-size:11px;color:#e05050;margin-left:4px">(¡Hoy!)</span>`
+        : `<span style="font-size:11px;color:${bc};margin-left:4px">(${dE} días)</span>`;
+      fechaHtml = `<div class="eq-info-row">
+        <div class="eq-info-item">
+          <span class="eq-info-label">Fecha límite</span>
+          <span class="eq-info-val" style="color:${bc};font-weight:700;">${eq_fmt(a.fechaLimite)}${dTxt}</span>
+        </div>
+      </div>`;
+    }
+
+    const notaBtn = a.nota
+      ? `<button onclick="adel_toggleNota('${a.id}')" style="font-size:10px;color:#7a4e0a;background:#fffaea;border:1px solid #e8c06a;border-radius:8px;cursor:pointer;font-family:'Montserrat',sans-serif;padding:3px 0;display:block;width:100%;text-align:center;margin-top:5px;">Ver detalle ▾</button>` : '';
+    const notaDiv = a.nota
+      ? `<div id="adel-nota-${a.id}" style="display:none;" class="eq-notas">${a.nota}</div>` : '';
+
+    return `<div class="c-card" style="background:#fdf3dc;border-color:#e8c06a;">
+      <div class="c-header">
+        <div class="c-nombres" style="flex:1;min-width:0;">
+          <div class="eq-bebe-row">
+            <span class="c-nombre" style="color:#5a3a00;">${a._bebeNombre||'—'}</span>
+            ${a._mamaNombre ? `<span class="eq-mama-inline">${a._mamaNombre}</span>` : ''}
+          </div>
+          <div class="eq-badges">
+            <span class="eq-badge-paquete" style="background:#e8c06a;color:#5a3a00;">${a.cantFotos} fotos</span>
           </div>
         </div>
+        <div style="flex-shrink:0;text-align:right;">
+          ${adelEstadoBtn(a._sesId, a.id, estadoNorm)}
+          ${notaBtn}
+        </div>
       </div>
-      ${limiteTxt}
       ${notaDiv}
-      ${confirmBox}
-      <div class="c-footer" style="background:#fdf3dc;border-top:1px solid #f0d89a;padding:6px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${footerContent}</div>
+      ${fechaHtml}
     </div>`;
-  });
-  html += `<button class="adel-nuevo-btn" onclick="adel_abrirModalNuevo()">+ Nuevo adelanto</button>
-  <hr class="adel-sep">`;
-  return html;
+  }).join('');
+
+  return `<div style="margin-bottom:6px;">
+    <div class="adel-section-hdr">
+      <span class="adel-section-label">Adelantos pendientes</span>
+      <span class="adel-count-badge">${pendientes.length}</span>
+    </div>
+    ${cards}
+    <button class="adel-nuevo-btn" onclick="adel_abrirModalNuevo()">+ Nuevo adelanto</button>
+    <hr class="adel-sep">
+  </div>`;
 }
 
 function adel_toggleNota(adelId) {
