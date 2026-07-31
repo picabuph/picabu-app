@@ -468,6 +468,40 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 #tab-sesiones .c-footer { padding:5px 10px; }
 #tab-sesiones .c-body { padding:0 10px 4px; }
 
+/* ── ADELANTOS ── */
+.adel-section-hdr { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.adel-section-label { font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:#7a4e0a; font-weight:700; }
+.adel-count-badge { background:#e8c06a; color:#5a3a00; border-radius:10px; padding:1px 8px; font-size:10px; font-weight:600; }
+.adel-card { background:#fdf3dc; border:1px solid #e8c06a; border-radius:12px; margin-bottom:6px; overflow:hidden; }
+.adel-card .c-header { background:#fdf3dc; border-bottom:1px solid #f0d89a; padding:8px 12px; gap:8px; }
+.adel-card .c-footer { background:#fdf3dc; border-top:1px solid #f0d89a; padding:6px 12px; }
+.adel-badge { font-size:9px; background:#fff3cd; color:#7a4e0a; border-radius:5px; padding:2px 7px; font-weight:600; }
+.adel-badge-fotos { background:#e8c06a; color:#5a3a00; }
+.adel-info-row { display:flex; gap:12px; flex-wrap:wrap; padding:5px 12px; border-top:1px solid #f0d89a; }
+.adel-confirm-box { background:#fffaea; border-top:1px solid #f0d89a; padding:10px 12px; }
+.adel-confirm-q { font-size:12px; font-weight:600; color:#7a4e0a; margin-bottom:8px; }
+.adel-nota-expanded { background:#fffaea; border-top:1px solid #f0d89a; padding:7px 12px; font-size:11px; color:#5a4a40; line-height:1.5; }
+.adel-sep { border:none; border-top:1px solid var(--border); margin:14px 0 14px; }
+.adel-nuevo-btn { display:block; width:100%; text-align:left; background:none; border:1px dashed #e8c06a; border-radius:10px; padding:9px 14px; font-size:11px; color:#7a4e0a; font-family:'Montserrat',sans-serif; cursor:pointer; margin-bottom:14px; }
+.adel-nuevo-btn:hover { background:#fdf3dc; }
+.adel-solicitar-link { font-size:10px; color:#b8860b; background:none; border:none; cursor:pointer; font-family:'Montserrat',sans-serif; padding:0; text-decoration:underline; margin-left:auto; }
+.adel-notif-banner { background:#fff8e1; border:1px solid #e8c06a; border-radius:12px; padding:10px 14px; margin-bottom:12px; display:flex; align-items:flex-start; gap:10px; }
+.adel-notif-icon { font-size:18px; flex-shrink:0; }
+.adel-notif-txt { flex:1; font-size:12px; color:#5a3a00; line-height:1.5; }
+.adel-notif-title { font-weight:700; font-size:12px; color:#5a3a00; margin-bottom:2px; }
+.adel-notif-ok { font-size:10px; padding:4px 12px; border-radius:7px; border:1px solid #c9a000; background:#ffe066; color:#5a3a00; cursor:pointer; font-family:'Montserrat',sans-serif; font-weight:600; flex-shrink:0; margin-top:2px; }
+/* Modal solicitar adelanto */
+.adel-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:9000; align-items:flex-end; justify-content:center; }
+.adel-modal-overlay.open { display:flex; }
+.adel-modal { background:var(--white); border-radius:18px 18px 0 0; padding:20px 18px 32px; width:100%; max-width:520px; }
+.adel-modal-title { font-size:13px; font-weight:700; color:var(--marron-d); margin-bottom:14px; }
+.adel-modal .fg { margin-bottom:10px; }
+.adel-modal .fg label { font-size:11px; color:var(--muted); display:block; margin-bottom:3px; letter-spacing:0.5px; }
+.adel-modal .fg input, .adel-modal .fg select, .adel-modal .fg textarea { width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:9px; font-size:13px; font-family:'Montserrat',sans-serif; background:var(--white); color:var(--text); box-sizing:border-box; }
+/* Subsección en picabú edit modal */
+.adel-picabu-section { background:#fffaea; border:1px solid #e8c06a; border-radius:10px; padding:10px 14px; margin-bottom:8px; display:none; }
+.adel-picabu-label { font-size:10px; letter-spacing:1px; text-transform:uppercase; color:#7a4e0a; font-weight:600; margin-bottom:8px; }
+
 </style>
 </head>
 <body>
@@ -499,6 +533,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 
 <div class="container">
   <div class="page active" id="tab-pedidos">
+    <div id="adel-notif-area" style="padding:14px 14px 0;max-width:800px;margin:0 auto;"></div>
     <button class="btn-nuevo" onclick="abrirModal()">+ Nuevo pedido</button>
     <div id="lista-pedidos"><div class="c-card" id="ccard-0" ondragover="onDragOverCliente(event,0)" ondrop="onDropCliente(event,0)" ondragleave="this.classList.remove(&#39;drag-over&#39;)">
     <div class="c-header">
@@ -1143,10 +1178,60 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
       <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#6a4fa0;font-weight:600;margin-bottom:8px;">Equipo app</div>
       <div id="eq-vinculo-content"></div>
     </div>
+    <div id="adel-picabu-section" class="adel-picabu-section">
+      <div class="adel-picabu-label">Adelanto a Renu</div>
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+        <div class="fg" style="flex:0 0 80px;margin-bottom:0;">
+          <label>Fotos</label>
+          <input type="number" id="adel-picabu-cant" min="1" placeholder="cant." style="width:100%;padding:6px 8px;border:1px solid #e8c06a;border-radius:8px;font-size:13px;font-family:inherit;">
+        </div>
+        <div class="fg" style="flex:1;min-width:120px;margin-bottom:0;">
+          <label>Para cuándo</label>
+          <input type="date" id="adel-picabu-fecha" style="width:100%;padding:6px 8px;border:1px solid #e8c06a;border-radius:8px;font-size:13px;font-family:inherit;">
+        </div>
+        <div class="fg" style="flex:2;min-width:160px;margin-bottom:0;">
+          <label>Detalle fotos (oculto en notas)</label>
+          <input type="text" id="adel-picabu-nota" placeholder="ej: las 3 de la bañera" style="width:100%;padding:6px 8px;border:1px solid #e8c06a;border-radius:8px;font-size:13px;font-family:inherit;">
+        </div>
+        <button onclick="adel_guardarDesdePicabu()" style="flex-shrink:0;padding:7px 14px;border-radius:9px;border:1px solid #c9a000;background:#ffe066;color:#5a3a00;font-size:11px;font-family:'Montserrat',sans-serif;font-weight:600;cursor:pointer;margin-bottom:0;">Solicitar</button>
+      </div>
+      <div id="adel-picabu-lista" style="margin-top:8px;font-size:11px;color:#7a4e0a;"></div>
+    </div>
     <div class="mbox-btns">
       <button class="btn-sec" onclick="cerrarModal()">Cancelar</button>
       <button class="btn-eliminar" id="btn-eliminar-pedido" style="display:none" onclick="eliminarPedido()">🗑 Eliminar</button>
       <button class="btn-pri" onclick="guardarPedido()">Guardar pedido</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal solicitar adelanto (global / desde card equipo) -->
+<div class="adel-modal-overlay" id="adel-modal">
+  <div class="adel-modal">
+    <div class="adel-modal-title">Solicitar adelanto a Renu</div>
+    <div class="fg">
+      <label>Sesión</label>
+      <select id="adel-m-sesion" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:9px;font-size:13px;font-family:'Montserrat',sans-serif;background:var(--white);color:var(--text);">
+        <option value="">Elegir sesión...</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <div class="fg" style="flex:0 0 90px;">
+        <label>Fotos</label>
+        <input type="number" id="adel-m-cant" min="1" placeholder="cant." style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:9px;font-size:13px;font-family:'Montserrat',sans-serif;">
+      </div>
+      <div class="fg" style="flex:1;">
+        <label>Para cuándo</label>
+        <input type="date" id="adel-m-fecha" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:9px;font-size:13px;font-family:'Montserrat',sans-serif;">
+      </div>
+    </div>
+    <div class="fg">
+      <label>Detalle fotos (oculto en notas)</label>
+      <input type="text" id="adel-m-nota" placeholder="ej: las 3 de la bañera, la del jardín..." style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:9px;font-size:13px;font-family:'Montserrat',sans-serif;">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:6px;">
+      <button onclick="adel_cerrarModal()" style="flex:1;padding:10px;border-radius:9px;border:1px solid var(--border);background:none;font-family:'Montserrat',sans-serif;font-size:12px;cursor:pointer;">Cancelar</button>
+      <button onclick="adel_guardarDesdeModal()" style="flex:2;padding:10px;border-radius:9px;border:1px solid #c9a000;background:#ffe066;color:#5a3a00;font-family:'Montserrat',sans-serif;font-size:12px;font-weight:600;cursor:pointer;">Solicitar adelanto</button>
     </div>
   </div>
 </div>
@@ -1751,6 +1836,7 @@ function renderPedidos() {
     </div>`;
   }
   el.innerHTML = html;
+  if (typeof adel_renderNotifAngie === 'function') adel_renderNotifAngie();
 }
 
 // ── HELPER VIDEO PENDIENTE ──
@@ -1860,6 +1946,7 @@ function actualizarVinculoEq() {
   if (match.tipo === 'auto') {
     section.style.display = '';
     content.innerHTML = _renderMatch(match.match);
+    if (typeof adel_mostrarSeccionPicabu === 'function') adel_mostrarSeccionPicabu(match.match.id, bebe, mama);
   } else if (match.candidatos && match.candidatos.length) {
     section.style.display = '';
     const sorted = [...match.candidatos].sort((a,b) => (a.bebe||'').localeCompare(b.bebe||'', 'es'));
@@ -1873,15 +1960,18 @@ function actualizarVinculoEq() {
         Vincular con equipo app al guardar
       </label>
     </div>`;
+    if (typeof adel_mostrarSeccionPicabu === 'function') adel_mostrarSeccionPicabu(null);
     document.getElementById('eq-vinculo-sel').addEventListener('change', function() {
       const chk = document.getElementById('eq-pasar-check');
       if (chk) { chk.dataset.sesid = this.value; chk.checked = !!this.value; }
       const sel = sesiones?.find(s => s.id === this.value);
       const lbl = document.querySelector('#eq-vinculo-section label[for] span, #eq-vinculo-section label span');
       if (sel && lbl) lbl.textContent = ESTADOS_PREVIOS_EQ.includes(sel.estado) ? 'Pasar a edición Renu al guardar' : 'Vincular con equipo app al guardar';
+      if (typeof adel_mostrarSeccionPicabu === 'function') adel_mostrarSeccionPicabu(this.value || null, bebe, mama);
     });
   } else {
     section.style.display = 'none';
+    if (typeof adel_mostrarSeccionPicabu === 'function') adel_mostrarSeccionPicabu(null);
   }
 }
 
@@ -2524,7 +2614,7 @@ function abrirModal() {
   document.getElementById('modal').classList.add('open');
   document.getElementById('btn-eliminar-pedido').style.display='none';
 }
-function cerrarModal(){document.getElementById('modal').classList.remove('open'); document.getElementById('btn-eliminar-pedido').style.display='none'; editCI=null; const s=document.getElementById('eq-vinculo-section'); if(s) s.style.display='none'; const vr=document.getElementById('video-reminder-section'); if(vr) vr.style.display='none';}
+function cerrarModal(){document.getElementById('modal').classList.remove('open'); document.getElementById('btn-eliminar-pedido').style.display='none'; editCI=null; const s=document.getElementById('eq-vinculo-section'); if(s) s.style.display='none'; const vr=document.getElementById('video-reminder-section'); if(vr) vr.style.display='none'; const ap=document.getElementById('adel-picabu-section'); if(ap) ap.style.display='none';}
 function eliminarPedido(){
   if(!confirm('¿Eliminar este pedido? Esta acción no se puede deshacer.')) return;
   pedidos.splice(editCI,1);
@@ -3159,6 +3249,7 @@ window.setEquipoSesionesLocal = function(lista) {
   const tab = document.querySelector('.tab.active')?.dataset.tab;
   if (tab==='sesiones') renderSesionesAngie();
   if (tab==='carga') renderEqLoteLista();
+  if (typeof adel_renderNotifAngie === 'function') adel_renderNotifAngie();
 };
 
 function eq_save() {
@@ -3377,7 +3468,7 @@ function renderCardEq(c, idx, compacto) {
     ${info?`<div class="eq-info-row">${info}</div>`:''}
     ${alerta60}
     ${c.notas?`<div class="eq-notas"><div class="eq-notas-label">Notas</div>${c.notas}</div>`:''}
-    <div class="c-footer">${acciones}<span style="margin-left:auto;font-size:10px;color:#ccc;">☁ sincronizado</span></div>
+    <div class="c-footer">${acciones}<button class="adel-solicitar-link" onclick="event.stopPropagation();adel_solicitarDesdeSesion('${c.id}')">Solicitar adelanto</button><span style="font-size:10px;color:#ccc;">☁ sincronizado</span></div>
   </div>`;
 }
 
@@ -3403,10 +3494,11 @@ function renderSesionesAngie() {
   }
   if (!_eqSesiones.length) { listaEl.innerHTML='<div class="empty">No hay sesiones cargadas todavía.</div>'; return; }
   // Sync bar
+  const adelHtml=typeof renderAdelantosPendientes==='function'?renderAdelantosPendientes():'';
   const syncTxt=_eqLastSync
     ?`<span class="eq-sync-dot"></span>Sincronizado ${_eqLastSync.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}`
     :'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#ccc;margin-right:4px;vertical-align:middle;"></span>Conectando con Firebase...';
-  let html=`<div class="eq-sync-bar">${syncTxt}</div>`;
+  let html=adelHtml+`<div class="eq-sync-bar">${syncTxt}</div>`;
   const activasOrdenadas=ordenadas.filter(c=>!estaTerminado(c));
   let _prevGrupoEq=null;
   activasOrdenadas.forEach(c=>{
@@ -3774,6 +3866,213 @@ document.addEventListener('click', e => {
 });
 
 load(); showTab('diseno'); renderTarifasFotos();
+
+// ── ADELANTOS RENU ──────────────────────────────────────────────────────────
+
+function _adelGetAll() {
+  const sesiones = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : _eqSesiones;
+  const result = [];
+  sesiones.forEach(s => {
+    if (!s.adelantos || !s.adelantos.length) return;
+    s.adelantos.forEach(a => result.push({ ...a, _sesId: s.id, _bebeNombre: s.bebe, _mamaNombre: s.mama }));
+  });
+  return result;
+}
+
+function _adelUpdateOnSesion(sesId, adelId, changes) {
+  const idx = _eqSesiones.findIndex(s => s.id === sesId);
+  if (idx === -1) return;
+  const aIdx = (_eqSesiones[idx].adelantos || []).findIndex(a => a.id === adelId);
+  if (aIdx === -1) return;
+  _eqSesiones[idx].adelantos[aIdx] = { ..._eqSesiones[idx].adelantos[aIdx], ...changes };
+  eq_save();
+}
+
+function _adelAddToSesion(sesId, adelanto) {
+  const idx = _eqSesiones.findIndex(s => s.id === sesId);
+  if (idx === -1) return false;
+  if (!_eqSesiones[idx].adelantos) _eqSesiones[idx].adelantos = [];
+  _eqSesiones[idx].adelantos.push(adelanto);
+  eq_save();
+  return true;
+}
+
+function renderAdelantosPendientes() {
+  const pendientes = _adelGetAll().filter(a => a.estado === 'pendiente' || a.estado === 'confirmando');
+  if (!pendientes.length) return '';
+  let html = `<div class="adel-section-hdr">
+    <span class="adel-section-label">Adelantos pendientes</span>
+    <span class="adel-count-badge">${pendientes.length}</span>
+  </div>`;
+  pendientes.forEach(a => {
+    const confirmando = a.estado === 'confirmando';
+    const limiteTxt = a.fechaLimite ? `<div class="adel-info-row"><div class="eq-info-item"><span class="eq-info-label">Fecha límite</span><span class="eq-info-val" style="color:#c97b00;font-weight:700;">${eq_fmt(a.fechaLimite)}</span></div></div>` : '';
+    const notaToggle = a.nota ? `<button class="eq-btn-accion" style="font-size:9px;padding:3px 8px;border-color:#e8c06a;color:#7a4e0a;" onclick="adel_toggleNota('${a.id}')">Ver detalle ▾</button>` : '';
+    const notaDiv = a.nota ? `<div class="adel-nota-expanded" id="adel-nota-${a.id}" style="display:none;">${a.nota}</div>` : '';
+    const confirmBox = confirmando ? `<div class="adel-confirm-box">
+      <div class="adel-confirm-q">¿Enviaste las fotos a Angie?</div>
+      <div style="display:flex;gap:8px;">
+        <button class="eq-btn-accion" style="background:#d4f0e0;color:#2a6a47;border-color:#a8dbbf;" onclick="adel_confirmarEnvio('${a._sesId}','${a.id}')">Sí, envié</button>
+        <button class="eq-btn-accion" onclick="adel_cancelarConfirm('${a._sesId}','${a.id}')">Todavía no</button>
+      </div>
+    </div>` : '';
+    const footerContent = !confirmando
+      ? `<button class="eq-btn-accion" style="background:#eef7f0;color:#2e7a55;border-color:#a8dbbf;" onclick="adel_iniciarConfirm('${a._sesId}','${a.id}')">✓ Marcar completado</button>${notaToggle}<span style="margin-left:auto;font-size:10px;color:#ccc;">☁ sincronizado</span>`
+      : `<span style="font-size:10px;color:#c97b00;font-weight:500;">Esperando confirmación...</span>`;
+    html += `<div class="adel-card">
+      <div class="c-header" style="background:#fdf3dc;border-bottom:1px solid #f0d89a;padding:8px 12px;gap:8px;display:flex;align-items:center;">
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:baseline;gap:6px;"><span style="font-size:13px;font-weight:600;color:#3a2e2a;">${a._bebeNombre||'—'}</span>${a._mamaNombre?`<span style="font-size:11px;color:#9e8c80;">${a._mamaNombre}</span>`:''}</div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;">
+            <span class="adel-badge">Adelanto</span>
+            ${a.cantFotos?`<span class="adel-badge adel-badge-fotos">${a.cantFotos} foto${a.cantFotos!=1?'s':''}</span>`:''}
+          </div>
+        </div>
+      </div>
+      ${limiteTxt}
+      ${notaDiv}
+      ${confirmBox}
+      <div class="c-footer" style="background:#fdf3dc;border-top:1px solid #f0d89a;padding:6px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${footerContent}</div>
+    </div>`;
+  });
+  html += `<button class="adel-nuevo-btn" onclick="adel_abrirModalNuevo()">+ Nuevo adelanto</button>
+  <hr class="adel-sep">`;
+  return html;
+}
+
+function adel_toggleNota(adelId) {
+  const el = document.getElementById('adel-nota-' + adelId);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function adel_iniciarConfirm(sesId, adelId) {
+  _adelUpdateOnSesion(sesId, adelId, { estado: 'confirmando' });
+  renderSesionesAngie();
+}
+
+function adel_cancelarConfirm(sesId, adelId) {
+  _adelUpdateOnSesion(sesId, adelId, { estado: 'pendiente' });
+  renderSesionesAngie();
+}
+
+function adel_confirmarEnvio(sesId, adelId) {
+  _adelUpdateOnSesion(sesId, adelId, { estado: 'enviado_angie', enviadoEn: new Date().toISOString() });
+  renderSesionesAngie();
+  adel_renderNotifAngie();
+}
+
+function adel_confirmarRecibido(sesId, adelId) {
+  _adelUpdateOnSesion(sesId, adelId, { estado: 'completado' });
+  adel_renderNotifAngie();
+}
+
+function adel_renderNotifAngie() {
+  const el = document.getElementById('adel-notif-area');
+  if (!el) return;
+  const enviados = _adelGetAll().filter(a => a.estado === 'enviado_angie');
+  if (!enviados.length) { el.innerHTML = ''; return; }
+  el.innerHTML = enviados.map(a => `<div class="adel-notif-banner">
+    <span class="adel-notif-icon">📦</span>
+    <div class="adel-notif-txt">
+      <div class="adel-notif-title">Renu te envió fotos de ${a._bebeNombre||'—'}</div>
+      <div>${a.cantFotos ? a.cantFotos + ' foto' + (a.cantFotos!=1?'s':'') : ''}${a.nota ? ' · ' + a.nota : ''}</div>
+    </div>
+    <button class="adel-notif-ok" onclick="adel_confirmarRecibido('${a._sesId}','${a.id}')">OK, recibí</button>
+  </div>`).join('');
+}
+
+// Modal global
+let _adelModalSesPreselect = null;
+function adel_abrirModalNuevo(sesId) {
+  _adelModalSesPreselect = sesId || null;
+  const sel = document.getElementById('adel-m-sesion');
+  sel.innerHTML = '<option value="">Elegir sesión...</option>' +
+    _eqSesiones.filter(s => !['subidas'].includes(s.estado) || (s.adelantos||[]).some(a=>a.estado==='pendiente'))
+      .map(s => `<option value="${s.id}"${s.id===sesId?' selected':''}>${s.bebe}${s.mama?' — '+s.mama:''}</option>`).join('');
+  document.getElementById('adel-m-cant').value = '';
+  document.getElementById('adel-m-fecha').value = '';
+  document.getElementById('adel-m-nota').value = '';
+  document.getElementById('adel-modal').classList.add('open');
+}
+
+function adel_cerrarModal() {
+  document.getElementById('adel-modal').classList.remove('open');
+}
+
+function adel_guardarDesdeModal() {
+  const sesId = document.getElementById('adel-m-sesion').value;
+  if (!sesId) { alert('Elegí una sesión'); return; }
+  const cantRaw = document.getElementById('adel-m-cant').value;
+  const cant = parseInt(cantRaw) || 0;
+  if (!cant) { alert('Ingresá la cantidad de fotos'); return; }
+  const adelanto = {
+    id: 'adel-' + Date.now(),
+    cantFotos: cant,
+    nota: document.getElementById('adel-m-nota').value.trim(),
+    fechaLimite: document.getElementById('adel-m-fecha').value || '',
+    estado: 'pendiente',
+    creadoEn: new Date().toISOString()
+  };
+  _adelAddToSesion(sesId, adelanto);
+  adel_cerrarModal();
+  renderSesionesAngie();
+}
+
+// Desde card de sesión (botón en footer)
+function adel_solicitarDesdeSesion(sesId) {
+  adel_abrirModalNuevo(sesId);
+}
+
+// Desde picabú edit pedido modal
+let _adelPicabuSesId = null;
+function adel_mostrarSeccionPicabu(sesId, bebe, mama) {
+  _adelPicabuSesId = sesId || null;
+  const sec = document.getElementById('adel-picabu-section');
+  if (!sec) return;
+  if (!sesId) { sec.style.display='none'; return; }
+  sec.style.display = 'block';
+  document.getElementById('adel-picabu-cant').value = '';
+  document.getElementById('adel-picabu-fecha').value = '';
+  document.getElementById('adel-picabu-nota').value = '';
+  adel_renderListaPicabu(sesId);
+}
+
+function adel_renderListaPicabu(sesId) {
+  const el = document.getElementById('adel-picabu-lista');
+  if (!el) return;
+  const sesion = _eqSesiones.find(s => s.id === sesId);
+  if (!sesion || !sesion.adelantos || !sesion.adelantos.length) { el.innerHTML = ''; return; }
+  const pendientes = sesion.adelantos.filter(a => a.estado !== 'completado');
+  if (!pendientes.length) { el.innerHTML = ''; return; }
+  el.innerHTML = pendientes.map(a => {
+    const est = a.estado === 'enviado_angie' ? '✓ Enviado' : a.estado === 'confirmando' ? '⏳ Confirmando' : '⏳ Pendiente';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #f0d89a;">
+      <span>${a.cantFotos||'?'} fotos</span>
+      ${a.fechaLimite ? `<span>· ${eq_fmt(a.fechaLimite)}</span>` : ''}
+      <span style="margin-left:auto;color:#9e8c80;">${est}</span>
+    </div>`;
+  }).join('');
+}
+
+function adel_guardarDesdePicabu() {
+  if (!_adelPicabuSesId) return;
+  const cantRaw = document.getElementById('adel-picabu-cant').value;
+  const cant = parseInt(cantRaw) || 0;
+  if (!cant) { alert('Ingresá la cantidad de fotos'); return; }
+  const adelanto = {
+    id: 'adel-' + Date.now(),
+    cantFotos: cant,
+    nota: document.getElementById('adel-picabu-nota').value.trim(),
+    fechaLimite: document.getElementById('adel-picabu-fecha').value || '',
+    estado: 'pendiente',
+    creadoEn: new Date().toISOString()
+  };
+  _adelAddToSesion(_adelPicabuSesId, adelanto);
+  adel_renderListaPicabu(_adelPicabuSesId);
+  document.getElementById('adel-picabu-cant').value = '';
+  document.getElementById('adel-picabu-fecha').value = '';
+  document.getElementById('adel-picabu-nota').value = '';
+}
 </script>
 
 
