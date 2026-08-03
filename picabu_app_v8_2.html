@@ -35,13 +35,20 @@
     if (d && d.contactados !== undefined) {
       if (typeof window.setContactadosFromFirebase === 'function') window.setContactadosFromFirebase(d.contactados);
     } else {
-      // Firebase no tiene contactados aún → migrar lo que haya en localStorage
       const local = (() => { try { return JSON.parse(localStorage.getItem('picabu_contactados') || '{}'); } catch(e) { return {}; } })();
       if (Object.keys(local).length > 0) {
         setDoc(REF, { contactados: local }, { merge: true }).catch(e => console.warn('Firebase contactados migrate:', e));
       }
     }
+    if (d && d.despachos !== undefined) {
+      localStorage.setItem('picabu_despachos', JSON.stringify(d.despachos));
+      if (typeof renderEnvio === 'function') renderEnvio();
+    }
   } });
+  window.saveDespachoToFirebase = async function(arr) {
+    try { await setDoc(REF, { despachos: arr }, { merge: true }); }
+    catch(e) { console.warn('Firebase despachos:', e); }
+  };
   window.saveToFirebase = async function(data) {
     try {
       const clean = JSON.parse(JSON.stringify(data, (k,v) => v === undefined ? null : v));
@@ -1221,8 +1228,8 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 <!-- Modal solicitar adelanto (global / desde card equipo) -->
 <div class="adel-modal-overlay" id="adel-modal">
   <div class="adel-modal">
-    <div class="adel-modal-title">Solicitar adelanto a Renu</div>
-    <div class="fg">
+    <div id="adel-m-title" class="adel-modal-title">Solicitar adelanto a Renu</div>
+    <div id="adel-m-sesion-row" class="fg">
       <label>Sesión</label>
       <select id="adel-m-sesion" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:9px;font-size:13px;font-family:'Montserrat',sans-serif;background:var(--white);color:var(--text);">
         <option value="">Elegir sesión...</option>
@@ -1242,9 +1249,12 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
       <label>Detalle fotos (oculto en notas)</label>
       <input type="text" id="adel-m-nota" placeholder="ej: las 3 de la bañera, la del jardín..." style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:9px;font-size:13px;font-family:'Montserrat',sans-serif;">
     </div>
+    <div id="adel-m-delete-row" style="display:none;margin-top:6px;">
+      <button onclick="adel_eliminarDesdeModal()" style="width:100%;padding:9px;border:1px solid #e05050;border-radius:9px;background:none;font-family:'Montserrat',sans-serif;font-size:12px;cursor:pointer;color:#c94040;">🗑 Eliminar adelanto</button>
+    </div>
     <div style="display:flex;gap:8px;margin-top:6px;">
       <button onclick="adel_cerrarModal()" style="flex:1;padding:10px;border-radius:9px;border:1px solid var(--border);background:none;font-family:'Montserrat',sans-serif;font-size:12px;cursor:pointer;">Cancelar</button>
-      <button onclick="adel_guardarDesdeModal()" style="flex:2;padding:10px;border-radius:9px;border:1px solid #c9a000;background:#ffe066;color:#5a3a00;font-family:'Montserrat',sans-serif;font-size:12px;font-weight:600;cursor:pointer;">Solicitar adelanto</button>
+      <button id="adel-m-save-btn" onclick="adel_guardarDesdeModal()" style="flex:2;padding:10px;border-radius:9px;border:1px solid #c9a000;background:#ffe066;color:#5a3a00;font-family:'Montserrat',sans-serif;font-size:12px;font-weight:600;cursor:pointer;">Solicitar adelanto</button>
     </div>
   </div>
 </div>
@@ -2406,7 +2416,10 @@ function onDropProd(e,ci,pi) {
 
 // ── DESPACHOS ──
 function getDespachos() { try { return JSON.parse(localStorage.getItem('picabu_despachos')||'[]'); } catch(e) { return []; } }
-function saveDespachos(arr) { localStorage.setItem('picabu_despachos', JSON.stringify(arr)); }
+function saveDespachos(arr) {
+  localStorage.setItem('picabu_despachos', JSON.stringify(arr));
+  if (typeof window.saveDespachoToFirebase === 'function') window.saveDespachoToFirebase(arr);
+}
 
 function confirmarDespachoFn() {
   const fechaEl = document.getElementById('despacho-fecha');
@@ -2438,47 +2451,80 @@ function eliminarDespacho(id) {
 
 function renderEnvio() {
   const el = document.getElementById('lista-envio');
+  const allDespachos = getDespachos();
+  const despachoPendiente = allDespachos.filter(d => d.pago !== 'realizado');
+  const despachoHistorial = allDespachos.filter(d => d.pago === 'realizado');
+
+  // UIDs ya en un despacho pendiente → excluir del grupo principal
+  const uidsDespachados = new Set();
+  despachoPendiente.forEach(d => d.items.forEach(it => { if (it.uid) uidsDespachados.add(it.uid); }));
+
+  // Construir grupos excluyendo ya despachados
   const grupos = {};
   pedidos.forEach(p => p.prods.forEach(x => {
-    if (x.estado === 'En producción' && !esPlantilla(x.nombre)) {
+    if (x.estado === 'En producción' && !esPlantilla(x.nombre) && !uidsDespachados.has(x.uid)) {
       const prov = x.proveedor || 'Sin proveedor asignado';
       if (!grupos[prov]) grupos[prov] = [];
-      grupos[prov].push({ prod: nombreDiseno(p, x), cliente: p.bebe, mama: p.mama, nped: x.numPedido || '', precio: x.precio || 0, fechaLimiteEntrega: x.fechaLimiteEntrega || '' });
+      grupos[prov].push({
+        uid: x.uid,
+        prod: nombreDiseno(p, x),
+        cliente: p.bebe, mama: p.mama,
+        nped: x.numPedido || '',
+        precio: x.precio || 0,
+        fechaLimiteEntrega: x.fechaLimiteEntrega || '',
+        saldoPendiente: p.pago === 'Saldo pendiente'
+      });
     }
   }));
 
+  // Ordenar cada grupo por fecha límite (más urgente primero, sin fecha al final)
+  const sortByFecha = items => items.sort((a, b) => {
+    if (!a.fechaLimiteEntrega && !b.fechaLimiteEntrega) return 0;
+    if (!a.fechaLimiteEntrega) return 1;
+    if (!b.fechaLimiteEntrega) return -1;
+    return a.fechaLimiteEntrega.localeCompare(b.fechaLimiteEntrega);
+  });
+
+  const fmtDespacho = d => d.fecha ? new Date(d.fecha + 'T12:00').toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit', year:'numeric'}) : '—';
+
+  const renderItemRow = (it, conChk) => {
+    const npedHtml = it.nped ? `<span style="font-size:11px;background:#d4c8bf;color:#3a2e2a;border-radius:4px;padding:1px 6px;margin-left:6px;font-weight:600;">#${it.nped}</span>` : '';
+    const chk = conChk ? `<input type="checkbox" class="despacho-chk" data-item='${JSON.stringify(it).replace(/'/g,"&#39;")}'>` : '';
+    const saldoHtml = it.saldoPendiente ? `<div style="font-size:10px;color:#c97b00;margin-top:2px;">⚠ Saldo pendiente</div>` : '';
+    const fechaCol = it.fechaLimiteEntrega
+      ? `<div class="envio-fecha-col" style="text-align:right;">📦 ${fmtFechaLarga(it.fechaLimiteEntrega)}${saldoHtml}</div>`
+      : (it.saldoPendiente ? `<div class="envio-fecha-col" style="text-align:right;">${saldoHtml}</div>` : '');
+    return `<div class="envio-row">${chk}<div class="envio-row-info"><div class="envio-cliente">${it.cliente} · ${it.mama}</div><div class="envio-prod">${it.prod}${npedHtml}</div></div>${fechaCol}</div>`;
+  };
+
   let html = '';
-  if (!Object.keys(grupos).length) {
-    html = '<div class="empty">No hay productos en producción.</div>';
-  } else {
+
+  // Grupos pendientes de despachar
+  if (Object.keys(grupos).length) {
     html = Object.entries(grupos).map(([prov, items]) => {
+      sortByFecha(items);
       const esCOPY = prov === 'COPY';
-      const itemsHtml = items.map(it => {
-        const npedHtml = it.nped ? `<span style="font-size:11px;background:#d4c8bf;color:#3a2e2a;border-radius:4px;padding:1px 6px;margin-left:6px;font-weight:600;">#${it.nped}</span>` : '';
-        const chk = esCOPY ? `<input type="checkbox" class="despacho-chk" data-item='${JSON.stringify(it).replace(/'/g,"&#39;")}'>` : '';
-        const fechaCol = it.fechaLimiteEntrega ? `<div class="envio-fecha-col">📦 ${fmtFechaLarga(it.fechaLimiteEntrega)}</div>` : '';
-        return `<div class="envio-row">${chk}<div class="envio-row-info"><div class="envio-cliente">${it.cliente} · ${it.mama}</div><div class="envio-prod">${it.prod}${npedHtml}</div></div>${fechaCol}</div>`;
-      }).join('');
+      const itemsHtml = items.map(it => renderItemRow(it, esCOPY)).join('');
       const hoy = new Date().toISOString().split('T')[0];
       const despachoBar = esCOPY ? `<div class="despacho-bar"><label>Fecha de despacho</label><input type="date" id="despacho-fecha" value="${hoy}"><button class="btn-despacho" onclick="confirmarDespachoFn()">Confirmar despacho</button></div>` : '';
       return `<div class="envio-group"><div class="envio-prov">${prov}</div>${itemsHtml}${despachoBar}</div>`;
     }).join('');
+  } else if (!despachoPendiente.length) {
+    html = '<div class="empty">No hay productos en producción.</div>';
   }
 
-  // Historial de despachos COPY
-  const despachos = getDespachos().filter(d => d.proveedor === 'COPY');
-  if (despachos.length) {
-    html += `<div class="historial-titulo">Historial de despachos COPY</div>`;
-    html += despachos.map(d => {
-      const fechaFmt = d.fecha ? new Date(d.fecha + 'T12:00').toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit', year:'numeric'}) : '—';
+  // Despachos solicitados (pendientes de entrega)
+  if (despachoPendiente.length) {
+    html += `<div class="historial-titulo">Despacho solicitado</div>`;
+    html += despachoPendiente.map(d => {
       const pagoClass = d.pago === 'realizado' ? 'realizado' : 'pendiente';
       return `<div class="despacho-card">
         <div class="despacho-card-head">
-          <div><span class="despacho-card-fecha">${fechaFmt}</span><span class="despacho-card-meta">${d.items.length} producto${d.items.length !== 1 ? 's' : ''}</span></div>
+          <div><span class="despacho-card-fecha">${fmtDespacho(d)}</span><span class="despacho-card-meta">${d.items.length} producto${d.items.length !== 1 ? 's' : ''}</span></div>
           <div class="despacho-card-acciones">
             <select class="despacho-pago-sel ${pagoClass}" onchange="cambiarPagoDespacho('${d.id}',this.value)">
-              <option value="pendiente" ${d.pago==='pendiente'?'selected':''}>Pago pendiente</option>
-              <option value="realizado" ${d.pago==='realizado'?'selected':''}>Pago realizado</option>
+              <option value="pendiente" ${d.pago==='pendiente'?'selected':''}>Esperando entrega</option>
+              <option value="realizado" ${d.pago==='realizado'?'selected':''}>Entregado ✓</option>
             </select>
             <button class="btn-del-despacho" onclick="eliminarDespacho('${d.id}')">Eliminar</button>
           </div>
@@ -2486,12 +2532,38 @@ function renderEnvio() {
         <div class="despacho-card-body">
           ${d.items.map(it => {
             const npedHtml = it.nped ? `<span style="font-size:10px;background:#d4c8bf;color:#3a2e2a;border-radius:4px;padding:1px 5px;margin-left:5px;font-weight:600;">#${it.nped}</span>` : '';
-            return `<div class="despacho-item">
-              <div class="despacho-item-left">
-                <span class="despacho-item-cliente">${it.cliente} · ${it.mama}</span>
-                <span class="despacho-item-prod">${it.prod}${npedHtml}</span>
-              </div>
-            </div>`;
+            return `<div class="despacho-item"><div class="despacho-item-left">
+              <span class="despacho-item-cliente">${it.cliente} · ${it.mama}</span>
+              <span class="despacho-item-prod">${it.prod}${npedHtml}</span>
+            </div></div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Historial (entregados)
+  if (despachoHistorial.length) {
+    html += `<div class="historial-titulo">Historial de despachos COPY</div>`;
+    html += despachoHistorial.map(d => {
+      return `<div class="despacho-card">
+        <div class="despacho-card-head">
+          <div><span class="despacho-card-fecha">${fmtDespacho(d)}</span><span class="despacho-card-meta">${d.items.length} producto${d.items.length !== 1 ? 's' : ''}</span></div>
+          <div class="despacho-card-acciones">
+            <select class="despacho-pago-sel realizado" onchange="cambiarPagoDespacho('${d.id}',this.value)">
+              <option value="pendiente">Esperando entrega</option>
+              <option value="realizado" selected>Entregado ✓</option>
+            </select>
+            <button class="btn-del-despacho" onclick="eliminarDespacho('${d.id}')">Eliminar</button>
+          </div>
+        </div>
+        <div class="despacho-card-body">
+          ${d.items.map(it => {
+            const npedHtml = it.nped ? `<span style="font-size:10px;background:#d4c8bf;color:#3a2e2a;border-radius:4px;padding:1px 5px;margin-left:5px;font-weight:600;">#${it.nped}</span>` : '';
+            return `<div class="despacho-item"><div class="despacho-item-left">
+              <span class="despacho-item-cliente">${it.cliente} · ${it.mama}</span>
+              <span class="despacho-item-prod">${it.prod}${npedHtml}</span>
+            </div></div>`;
           }).join('')}
         </div>
       </div>`;
@@ -4035,7 +4107,10 @@ function renderAdelantosPendientes() {
           </div>
         </div>
         <div style="flex-shrink:0;text-align:right;">
-          ${adelEstadoBtn(a._sesId, a.id, estadoNorm)}
+          <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;">
+            ${adelEstadoBtn(a._sesId, a.id, estadoNorm)}
+            <button onclick="event.stopPropagation();adel_abrirModalEditar('${a._sesId}','${a.id}')" title="Editar adelanto" style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;line-height:1;color:var(--muted);">✏️</button>
+          </div>
           ${notaBtn}
         </div>
       </div>
@@ -4098,7 +4173,14 @@ function adel_renderNotifAngie() {
 
 // Modal global
 let _adelModalSesPreselect = null;
+let _adelEditSesId = null, _adelEditAdelId = null;
+
 function adel_abrirModalNuevo(sesId) {
+  _adelEditSesId = null; _adelEditAdelId = null;
+  document.getElementById('adel-m-title').textContent = 'Solicitar adelanto a Renu';
+  document.getElementById('adel-m-save-btn').textContent = 'Solicitar adelanto';
+  document.getElementById('adel-m-sesion-row').style.display = '';
+  document.getElementById('adel-m-delete-row').style.display = 'none';
   _adelModalSesPreselect = sesId || null;
   const sel = document.getElementById('adel-m-sesion');
   sel.innerHTML = '<option value="">Elegir sesión...</option>' +
@@ -4110,30 +4192,56 @@ function adel_abrirModalNuevo(sesId) {
   document.getElementById('adel-modal').classList.add('open');
 }
 
+function adel_abrirModalEditar(sesId, adelId) {
+  const ses = _eqSesiones.find(s => s.id === sesId);
+  const adel = (ses?.adelantos || []).find(a => a.id === adelId);
+  if (!adel) return;
+  _adelEditSesId = sesId; _adelEditAdelId = adelId;
+  document.getElementById('adel-m-title').textContent = `Editar adelanto — ${ses.bebe||''}`;
+  document.getElementById('adel-m-save-btn').textContent = 'Guardar cambios';
+  document.getElementById('adel-m-sesion-row').style.display = 'none';
+  document.getElementById('adel-m-delete-row').style.display = '';
+  document.getElementById('adel-m-cant').value = adel.cantFotos || '';
+  document.getElementById('adel-m-fecha').value = adel.fechaLimite || '';
+  document.getElementById('adel-m-nota').value = adel.nota || '';
+  document.getElementById('adel-modal').classList.add('open');
+}
+
 function adel_cerrarModal() {
   document.getElementById('adel-modal').classList.remove('open');
+  _adelEditSesId = null; _adelEditAdelId = null;
 }
 
 function adel_guardarDesdeModal() {
-  const sesId = document.getElementById('adel-m-sesion').value;
-  if (!sesId) { alert('Elegí una sesión'); return; }
-  const cantRaw = document.getElementById('adel-m-cant').value;
-  const cant = parseInt(cantRaw) || 0;
+  const cant = parseInt(document.getElementById('adel-m-cant').value) || 0;
+  const fecha = document.getElementById('adel-m-fecha').value || '';
+  const nota = document.getElementById('adel-m-nota').value.trim();
   if (!cant) { alert('Ingresá la cantidad de fotos'); return; }
-  const adelanto = {
-    id: 'adel-' + Date.now(),
-    cantFotos: cant,
-    nota: document.getElementById('adel-m-nota').value.trim(),
-    fechaLimite: document.getElementById('adel-m-fecha').value || '',
-    estado: 'pendiente',
-    creadoEn: new Date().toISOString()
-  };
-  _adelAddToSesion(sesId, adelanto);
+  if (_adelEditSesId && _adelEditAdelId) {
+    _adelUpdateOnSesion(_adelEditSesId, _adelEditAdelId, { cantFotos: cant, fechaLimite: fecha, nota });
+    renderSesionesAngie();
+  } else {
+    const sesId = document.getElementById('adel-m-sesion').value;
+    if (!sesId) { alert('Elegí una sesión'); return; }
+    const adelanto = { id: 'adel-' + Date.now(), cantFotos: cant, nota, fechaLimite: fecha, estado: 'edicion_renu', creadoEn: new Date().toISOString() };
+    _adelAddToSesion(sesId, adelanto);
+    renderSesionesAngie();
+  }
+  adel_cerrarModal();
+}
+
+function adel_eliminarDesdeModal() {
+  if (!_adelEditSesId || !_adelEditAdelId) return;
+  if (!confirm('¿Eliminar este adelanto?')) return;
+  const idx = _eqSesiones.findIndex(s => s.id === _adelEditSesId);
+  if (idx !== -1) {
+    _eqSesiones[idx].adelantos = (_eqSesiones[idx].adelantos || []).filter(a => a.id !== _adelEditAdelId);
+    eq_save();
+  }
   adel_cerrarModal();
   renderSesionesAngie();
 }
 
-// Desde card de sesión (botón en footer)
 function adel_solicitarDesdeSesion(sesId) {
   adel_abrirModalNuevo(sesId);
 }
