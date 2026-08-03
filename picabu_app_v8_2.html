@@ -541,7 +541,15 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 <div class="container">
   <div class="page active" id="tab-pedidos">
     <div id="adel-notif-area" style="padding:14px 14px 0;max-width:800px;margin:0 auto;"></div>
-    <button class="btn-nuevo" onclick="abrirModal()">+ Nuevo pedido</button>
+    <div style="display:flex;align-items:center;gap:8px;max-width:800px;margin:0 auto;padding:6px 14px 0;">
+      <button class="btn-nuevo" onclick="abrirModal()" style="margin:0;">+ Nuevo pedido</button>
+      <div style="flex:1;"></div>
+      <div style="display:flex;align-items:center;gap:4px;background:var(--white);border:1px solid var(--border);border-radius:20px;padding:4px 10px;">
+        <span style="font-size:13px;color:var(--muted);">🔍</span>
+        <input id="search-pedidos" type="text" oninput="filtroSearchPedidos=this.value;renderPedidos();document.getElementById('search-pedidos-x').style.display=this.value?'inline':'none';" style="border:none;outline:none;background:none;font-size:12px;font-family:inherit;color:var(--text);width:120px;">
+        <span id="search-pedidos-x" onclick="filtroSearchPedidos='';document.getElementById('search-pedidos').value='';this.style.display='none';renderPedidos();" style="display:none;cursor:pointer;font-size:13px;color:var(--muted);line-height:1;">✕</span>
+      </div>
+    </div>
     <div id="lista-pedidos"><div class="c-card" id="ccard-0" ondragover="onDragOverCliente(event,0)" ondrop="onDropCliente(event,0)" ondragleave="this.classList.remove(&#39;drag-over&#39;)">
     <div class="c-header">
       <span class="drag-handle" draggable="true" ondragstart="onDragStartCliente(event,0)">⠿</span>
@@ -851,8 +859,16 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
   </div></div>
   </div>
   <div class="page" id="tab-diseno">
+    <div style="display:flex;justify-content:flex-end;max-width:800px;margin:0 auto;padding:4px 14px 0;">
+      <div style="display:flex;align-items:center;gap:4px;background:var(--white);border:1px solid var(--border);border-radius:20px;padding:4px 10px;">
+        <span style="font-size:13px;color:var(--muted);">🔍</span>
+        <input id="search-diseno" type="text" oninput="filtroSearchDiseno=this.value;renderDiseno();document.getElementById('search-diseno-x').style.display=this.value?'inline':'none';" style="border:none;outline:none;background:none;font-size:12px;font-family:inherit;color:var(--text);width:120px;">
+        <span id="search-diseno-x" onclick="filtroSearchDiseno='';document.getElementById('search-diseno').value='';this.style.display='none';renderDiseno();" style="display:none;cursor:pointer;font-size:13px;color:var(--muted);line-height:1;">✕</span>
+      </div>
+    </div>
     <div id="filtro-prov-wrap"></div>
     <div class="alertas-wrap">
+      <div id="alertas-video-confirm"></div>
       <div id="alertas-seguimiento"></div>
       <div id="alertas-entrega"></div>
     </div>
@@ -1112,6 +1128,10 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
       <!-- 4. Fecha límite entrega al cliente (editable) -->
       <div style="font-size:10px;color:#4a8a6a;margin-bottom:4px;">Fecha límite entrega al cliente</div>
       <input type="date" id="pm-fecha-entrega" style="width:100%;padding:8px 10px;border:1px solid #b3d4c8;border-radius:8px;font-size:13px;font-family:inherit;background:#fff;color:var(--text);box-sizing:border-box;">
+    </div>
+    <div class="fl">
+      <label>N° de pedido</label>
+      <input type="text" id="pm-nped" placeholder="Ej: 12345" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:9px;font-family:Montserrat,sans-serif;font-size:13px;background:var(--white);color:var(--text);box-sizing:border-box;">
     </div>
     <div class="fl">
       <label>Proveedor</label>
@@ -1614,8 +1634,27 @@ function selEstado(ci, pi, nombre, prefijo) {
   if (esEnProduccionNuevo) {
     const hoyISO = new Date().toISOString().split('T')[0];
     pedidos[ci].prods[pi].fechaEnProduccion = hoyISO;
-    const limite = new Date(); limite.setDate(limite.getDate() + 30);
-    pedidos[ci].prods[pi].fechaLimiteEntrega = limite.toISOString().split('T')[0];
+    // 60 días desde fotos elegidas si hay sesión vinculada, sino 30 días desde creación del pedido
+    const sesiones = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : [];
+    const ped = pedidos[ci];
+    const sesMatch = sesiones.find(s =>
+      s.mama && s.mama.toLowerCase() === (ped.mama||'').toLowerCase() &&
+      s.bebe && s.bebe.toLowerCase().includes((ped.bebe||'').toLowerCase())
+    );
+    const limite = new Date();
+    if (sesMatch && sesMatch.fechaConfirmacion) {
+      const base = new Date(sesMatch.fechaConfirmacion + 'T12:00');
+      base.setDate(base.getDate() + 60);
+      pedidos[ci].prods[pi].fechaLimiteEntrega = base.toISOString().split('T')[0];
+    } else if (ped.fecha) {
+      const parts = ped.fecha.split('/');
+      const base = parts.length === 3 ? new Date(`${parts[2]}-${parts[1]}-${parts[0]}T12:00`) : new Date();
+      base.setDate(base.getDate() + 30);
+      pedidos[ci].prods[pi].fechaLimiteEntrega = base.toISOString().split('T')[0];
+    } else {
+      limite.setDate(limite.getDate() + 30);
+      pedidos[ci].prods[pi].fechaLimiteEntrega = limite.toISOString().split('T')[0];
+    }
   }
   save(ci);
   const pop = document.getElementById(`${prefijo}-${ci}-${pi}`);
@@ -1839,22 +1878,91 @@ function todosEntregados(p) {
   return visibles.length > 0 && visibles.every(x => x.estado === 'Entregado');
 }
 
+function esServicioSinProduccion(nombre) {
+  return /video/i.test(nombre||'') || /backstage/i.test(nombre||'') ||
+         /pack.*foto/i.test(nombre||'') || /fotos?\s+sin\s+editar/i.test(nombre||'');
+}
+
+function clasificarPedido(p) {
+  const prods = (p.prods||[]).filter(x => !x.soloWA && !esPlantilla(x.nombre) && !esHojaExtra(x.nombre) && !esServicioSinProduccion(x.nombre) && (x.cantIdx === undefined || x.cantIdx === 0));
+  if (!prods.length) return 'pendiente_diseno';
+  if (prods.every(x => x.estado === 'Listo en estudio' || x.estado === 'Entregado')) return 'listo';
+  if (prods.every(x => x.estado === 'En producción' || x.estado === 'Listo en estudio' || x.estado === 'Entregado')) return 'produccion';
+  if (prods.some(x => x.estado === 'Pendiente datos cliente')) return 'pendiente_cliente';
+  return 'pendiente_diseno';
+}
+
+function deadlinePedido(p) {
+  // Fecha más temprana de fechaLimiteEntrega entre sus productos, o calculada desde sesión/pedido
+  const conFecha = (p.prods||[]).filter(x => x.fechaLimiteEntrega).map(x => x.fechaLimiteEntrega);
+  if (conFecha.length) return conFecha.sort()[0];
+  const sesiones = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : [];
+  const sesMatch = sesiones.find(s =>
+    s.mama && s.mama.toLowerCase() === (p.mama||'').toLowerCase() &&
+    s.bebe && s.bebe.toLowerCase().includes((p.bebe||'').toLowerCase())
+  );
+  if (sesMatch && sesMatch.fechaConfirmacion) {
+    const d = new Date(sesMatch.fechaConfirmacion + 'T12:00');
+    d.setDate(d.getDate() + 60);
+    return d.toISOString().split('T')[0];
+  }
+  if (p.fecha) {
+    const parts = p.fecha.split('/');
+    if (parts.length === 3) {
+      const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T12:00`);
+      if (!isNaN(d.getTime())) {
+        d.setDate(d.getDate() + 30);
+        return d.toISOString().split('T')[0];
+      }
+    }
+  }
+  return '9999-12-31';
+}
+
 function renderPedidos() {
   const el = document.getElementById('lista-pedidos');
   if (!pedidos.length) { el.innerHTML='<div class="empty">Todavía no hay pedidos.</div>'; return; }
-  const activos = pedidos.filter((p,i)=>!todosEntregados(p));
-  const entregados = pedidos.filter((p,i)=>todosEntregados(p));
-  let html = activos.length
-    ? activos.map((p)=>clienteCardHtml(p, pedidos.indexOf(p), true, false)).join('')
-    : '<div class="empty">No hay pedidos activos.</div>';
-  if (entregados.length) {
+
+  const q = filtroSearchPedidos.toLowerCase().trim();
+  const pedidosFiltrados = q ? pedidos.filter(p => (p.bebe||'').toLowerCase().includes(q) || (p.mama||'').toLowerCase().includes(q)) : pedidos;
+
+  const grupos = { pendiente_diseno: [], pendiente_cliente: [], produccion: [], listo: [], entregado: [] };
+  pedidosFiltrados.forEach(p => {
+    if (todosEntregados(p)) grupos.entregado.push(p);
+    else grupos[clasificarPedido(p)].push(p);
+  });
+
+  const sortPorDeadline = arr => arr.sort((a,b) => deadlinePedido(a).localeCompare(deadlinePedido(b)));
+  Object.values(grupos).forEach(sortPorDeadline);
+
+  const grupoLabel = (txt, color) =>
+    `<div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:${color};font-weight:700;padding:14px 4px 5px;display:flex;align-items:center;gap:8px;">${txt}<span style="flex:1;height:1px;background:${color};opacity:0.25;display:inline-block;"></span></div>`;
+
+  const GRUPOS_CONFIG = [
+    { key: 'pendiente_diseno',   label: 'Pendiente diseño',   color: '#7a8a6a' },
+    { key: 'pendiente_cliente',  label: 'Pendiente cliente',  color: '#9a6400' },
+    { key: 'produccion',         label: 'En producción',      color: '#2e6a50' },
+    { key: 'listo',              label: 'Listo en estudio',   color: '#4a7a3a' },
+  ];
+
+  let html = '';
+  let hayActivos = false;
+  GRUPOS_CONFIG.forEach(({ key, label, color }) => {
+    if (!grupos[key].length) return;
+    hayActivos = true;
+    html += grupoLabel(label, color);
+    html += grupos[key].map(p => clienteCardHtml(p, pedidos.indexOf(p), true, false)).join('');
+  });
+  if (!hayActivos) html = '<div class="empty">No hay pedidos activos.</div>';
+
+  if (grupos.entregado.length) {
     html += `<div style="margin-top:28px;">
       <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">
         <span>Entregados</span>
         <button onclick="limpiarEntregados('pedidos')" style="background:none;border:1px solid #c97b7b;color:#c97b7b;border-radius:8px;padding:4px 10px;font-size:9px;letter-spacing:1px;cursor:pointer;font-family:'Montserrat',sans-serif;">Eliminar todos</button>
       </div>
       <div style="opacity:0.6;">
-        ${entregados.map(p=>clienteCardHtml(p, pedidos.indexOf(p), true, false)).join('')}
+        ${grupos.entregado.map(p=>clienteCardHtml(p, pedidos.indexOf(p), true, false)).join('')}
       </div>
     </div>`;
   }
@@ -1869,7 +1977,7 @@ function videoPendiente(p) {
     s.mama && s.mama.toLowerCase() === (p.mama||'').toLowerCase() &&
     s.bebe && s.bebe.toLowerCase().includes((p.bebe||'').toLowerCase())
   );
-  return s ? (s.tareaVideoPendiente === true && s.tareaVideoHecho !== true && s.videoSinGrabar !== true) : false;
+  return s ? (s.tareaVideoPendiente === true && s.videoConfirmado === true && s.tareaVideoHecho !== true && s.videoSinGrabar !== true) : false;
 }
 
 // ── EQUIPO LINK ──
@@ -1907,6 +2015,9 @@ function _notasParaRenu(prods) {
 function _tieneVideoBackstage(prods) {
   return prods.some(p => /video/i.test(p.nombre||'') || /backstage/i.test(p.nombre||''));
 }
+function _tienePackFotos(prods) {
+  return prods.some(p => /pack.*foto/i.test(p.nombre||'') || /fotos?\s+sin\s+editar/i.test(p.nombre||''));
+}
 function _hayVideoEnForm() {
   return Array.from(document.querySelectorAll('#prods-form .pf-nombre'))
     .some(inp => /video/i.test(inp.value) || /backstage/i.test(inp.value));
@@ -1918,7 +2029,7 @@ function _actualizarVideoFotosCheck() {
   videoRow.style.display = cant > 40 ? '' : 'none';
 }
 
-function pasarAEdicionEquipo(sesId, cantFotos, notasExtra, tieneVideo) {
+function pasarAEdicionEquipo(sesId, cantFotos, notasExtra, tieneVideo, tienePackFotos) {
   const lista = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : _eqSesiones;
   console.log('[equipo] pasarAEdicionEquipo llamada — sesId:', sesId, '| sesiones cargadas:', lista.length);
   const idx = lista.findIndex(s => s.id === sesId);
@@ -1932,6 +2043,11 @@ function pasarAEdicionEquipo(sesId, cantFotos, notasExtra, tieneVideo) {
     if (cantFotos) c.cantFotos = cantFotos;
   }
   c.tieneProductos = true;
+  if (tieneVideo || tienePackFotos) {
+    if (!c.entregables) c.entregables = { video: false, packFotos: false, estado: 'edicion_renu' };
+    if (tieneVideo) c.entregables.video = true;
+    if (tienePackFotos) c.entregables.packFotos = true;
+  }
   if (notasExtra) {
     const existingNotas = c.notas || '';
     const lineasNuevas = notasExtra.split('\n').filter(l => l.trim() && !existingNotas.includes(l.trim()));
@@ -2002,6 +2118,8 @@ function actualizarVinculoEq() {
 
 // ── RENDER DISEÑO ──
 let filtroProveedor = null;
+let filtroSearchPedidos = '';
+let filtroSearchDiseno = '';
 
 function toggleFiltroProveedor(prov) {
   filtroProveedor = (filtroProveedor === prov) ? null : prov;
@@ -2028,7 +2146,68 @@ function renderFiltroProveedor() {
   wrap.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;padding:0 0 14px 0;">${chips}</div>`;
 }
 
+function _normNombre(s) {
+  return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+}
+function _findEqSesion(p, sesiones) {
+  if (p.eqSesId) return sesiones.find(s => s.id === p.eqSesId) || null;
+  const bebe = _normNombre(p.bebe), mama = _normNombre(p.mama);
+  return sesiones.find(s =>
+    _normNombre(s.mama) === mama &&
+    _normNombre(s.bebe).includes(bebe)
+  ) || null;
+}
+
+function confirmarFilmarVideo(eqSesId) {
+  const lista = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : _eqSesiones;
+  const c = lista.find(s => s.id === eqSesId);
+  if (!c) return;
+  c.videoConfirmado = true;
+  c.fechaVideoConfirmado = new Date().toISOString().split('T')[0];
+  _eqSesiones = lista;
+  if (typeof window.saveEquipoSesiones === 'function') window.saveEquipoSesiones(lista);
+  renderDiseno();
+}
+
+function noFilmarVideo(eqSesId) {
+  const lista = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : _eqSesiones;
+  const c = lista.find(s => s.id === eqSesId);
+  if (!c) return;
+  c.videoSinGrabar = true;
+  c.videoConfirmado = false;
+  _eqSesiones = lista;
+  if (typeof window.saveEquipoSesiones === 'function') window.saveEquipoSesiones(lista);
+  renderDiseno();
+}
+
 function renderDiseno() {
+  // Bandeja 0: Confirmar si se filman productos
+  const sesiones0 = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : [];
+  const pendientesConfirm = pedidos.filter(p => {
+    const activos = (p.prods||[]).filter(x => x.estado !== 'Entregado' && !x.soloWA && !esPlantilla(x.nombre) && !esHojaExtra(x.nombre));
+    if (!activos.length || !activos.every(x => x.estado === 'Listo en estudio')) return false;
+    const eq = _findEqSesion(p, sesiones0);
+    return eq && !eq.videoConfirmado && !eq.videoSinGrabar && !eq.tareaVideoHecho;
+  });
+  const vcEl = document.getElementById('alertas-video-confirm');
+  if (vcEl) {
+    if (pendientesConfirm.length) {
+      vcEl.innerHTML = `<div class="alert-box" style="border-color:#c4a0c7;background:#f5eef8;">
+        <div class="alert-title" style="color:#5a2a7a;">📦 Confirmar video de productos</div>
+        ${pendientesConfirm.map(p => {
+          const eq = _findEqSesion(p, sesiones0);
+          return `<div class="alert-grupo" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <div class="alert-cliente" style="margin:0;flex:1;">${p.bebe} · ${p.mama}</div>
+            <button onclick="confirmarFilmarVideo('${eq.id}')" style="padding:4px 12px;border-radius:8px;border:1px solid #a070c0;background:#e8d4f5;color:#5a2a7a;font-size:11px;font-family:'Montserrat',sans-serif;cursor:pointer;font-weight:600;">✓ Derivar a Renu</button>
+            <button onclick="noFilmarVideo('${eq.id}')" style="padding:4px 12px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--muted);font-size:11px;font-family:'Montserrat',sans-serif;cursor:pointer;">✗ No filmar</button>
+          </div>`;
+        }).join('')}
+      </div>`;
+    } else {
+      vcEl.innerHTML = '';
+    }
+  }
+
   // Bandeja 1: Sin respuesta del cliente
   const dias = getDias();
   const gruposSeg = {};
@@ -2045,13 +2224,13 @@ function renderDiseno() {
     });
   });
 
-  // Bandeja 2: Coordinar entrega (todos los productos Listo en estudio)
+  // Bandeja 2: Coordinar entrega (todos los productos Listo en estudio y video resuelto)
   const gruposEnt = {};
+  const sesionesEnt = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : [];
   pedidos.forEach((p) => {
     const activos = p.prods.filter(x => x.estado !== 'Entregado' && !x.soloWA && !esPlantilla(x.nombre));
-    const sesiones = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : [];
-    const equipoS = sesiones.find(s => s.mama && s.mama.toLowerCase() === (p.mama||'').toLowerCase() && s.bebe && s.bebe.toLowerCase().includes((p.bebe||'').toLowerCase()));
-    const videoResuelto = !equipoS || equipoS.tareaVideoHecho === true || equipoS.videoSinGrabar === true;
+    const equipoS = _findEqSesion(p, sesionesEnt);
+    const videoResuelto = !equipoS || !equipoS.tieneProductos || equipoS.videoSinGrabar === true || equipoS.tareaVideoHecho === true;
     if (activos.length > 0 && activos.every(x => x.estado === 'Listo en estudio') && videoResuelto) {
       const key = `${p.bebe} · ${p.mama}`;
       gruposEnt[key] = { tieneSaldo: p.pago === 'Saldo pendiente' };
@@ -2162,22 +2341,49 @@ function renderDiseno() {
 
   const el = document.getElementById('lista-diseno');
   if (!pedidos.length) { el.innerHTML='<div class="empty">No hay pedidos.</div>'; return; }
-  let activos = pedidos.filter(p=>!todosEntregados(p));
-  const entregados = pedidos.filter(p=>todosEntregados(p));
-  if (filtroProveedor) {
-    activos = activos.filter(p => p.prods.some(x => x.proveedor === filtroProveedor && !esPlantilla(x.nombre)));
-  }
-  let html = activos.length
-    ? activos.map(p=>clienteCardHtml(p, pedidos.indexOf(p), false, true, filtroProveedor||null)).join('')
-    : `<div class="empty">No hay pedidos con productos de ${filtroProveedor}.</div>`;
-  if (entregados.length) {
+
+  const qD = filtroSearchDiseno.toLowerCase().trim();
+  const pedidosFiltradosD = qD ? pedidos.filter(p => (p.bebe||'').toLowerCase().includes(qD) || (p.mama||'').toLowerCase().includes(qD)) : pedidos;
+
+  const gruposD = { pendiente_diseno: [], pendiente_cliente: [], produccion: [], listo: [], entregado: [] };
+  pedidosFiltradosD.forEach(p => {
+    if (todosEntregados(p)) gruposD.entregado.push(p);
+    else gruposD[clasificarPedido(p)].push(p);
+  });
+  Object.values(gruposD).forEach(arr => arr.sort((a,b) => deadlinePedido(a).localeCompare(deadlinePedido(b))));
+
+  const gLabel = (txt, color) =>
+    `<div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:${color};font-weight:700;padding:14px 4px 5px;display:flex;align-items:center;gap:8px;">${txt}<span style="flex:1;height:1px;background:${color};opacity:0.25;display:inline-block;"></span></div>`;
+
+  const GRUPOS_D = [
+    { key: 'pendiente_diseno',  label: 'Pendiente diseño',  color: '#7a8a6a' },
+    { key: 'pendiente_cliente', label: 'Pendiente cliente', color: '#9a6400' },
+    { key: 'produccion',        label: 'En producción',     color: '#2e6a50' },
+    { key: 'listo',             label: 'Listo en estudio',  color: '#4a7a3a' },
+  ];
+
+  let html = '';
+  let hayActivosD = false;
+  GRUPOS_D.forEach(({ key, label, color }) => {
+    let items = gruposD[key];
+    if (filtroProveedor) items = items.filter(p => p.prods.some(x => x.proveedor === filtroProveedor && !esPlantilla(x.nombre)));
+    if (!items.length) return;
+    hayActivosD = true;
+    html += gLabel(label, color);
+    html += items.map(p => clienteCardHtml(p, pedidos.indexOf(p), false, true, filtroProveedor||null)).join('');
+  });
+  if (!hayActivosD) html = filtroProveedor
+    ? `<div class="empty">No hay pedidos con productos de ${filtroProveedor}.</div>`
+    : '<div class="empty">No hay pedidos activos.</div>';
+
+  if (gruposD.entregado.length) {
     html += `<div style="margin-top:28px;">
       <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">
         <span>Entregados</span>
         <button onclick="limpiarEntregados('diseno')" style="background:none;border:1px solid #c97b7b;color:#c97b7b;border-radius:8px;padding:4px 10px;font-size:9px;letter-spacing:1px;cursor:pointer;font-family:'Montserrat',sans-serif;">Eliminar todos</button>
       </div>
       <div style="opacity:0.6;">
-        ${entregados.map(p=>clienteCardHtml(p, pedidos.indexOf(p), false, true)).join('')}
+        ${gruposD.entregado.map(p=>clienteCardHtml(p, pedidos.indexOf(p), false, true)).join('')}
       </div>
     </div>`;
   }
@@ -2246,6 +2452,7 @@ function abrirPModal(ci, pi) {
     desdeRow.style.display = 'none';
   }
   document.getElementById('pm-fecha-entrega').value = x.fechaLimiteEntrega || '';
+  document.getElementById('pm-nped').value = x.numPedido || '';
   // Referencia: fecha selección fotos + tope 60 días (desde sesión vinculada)
   const sesiones = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : [];
   const pedido = pedidos[ci];
@@ -2278,6 +2485,9 @@ function guardarPModal() {
   const {ci,pi} = pmEdit;
   pedidos[ci].prods[pi].nota = document.getElementById('pm-nota').value.trim();
   pedidos[ci].prods[pi].proveedor = document.getElementById('pm-proveedor').value.trim();
+  const nped = document.getElementById('pm-nped').value.trim();
+  if (nped) pedidos[ci].prods[pi].numPedido = nped;
+  else delete pedidos[ci].prods[pi].numPedido;
   const fechaEnt = document.getElementById('pm-fecha-entrega').value;
   if (fechaEnt) pedidos[ci].prods[pi].fechaLimiteEntrega = fechaEnt;
   else delete pedidos[ci].prods[pi].fechaLimiteEntrega;
@@ -2381,10 +2591,11 @@ function cambiarPago(ci, val) {
     const p = pedidos[ci];
     const notasExtra = _notasParaRenu(p.prods||[]);
     const tieneVideo = _tieneVideoBackstage(p.prods||[]);
+    const tienePackFotos = _tienePackFotos(p.prods||[]);
     const videoFotosPendiente = tieneVideo && p.eqCantFotos && p.eqCantFotos > 40;
     const notasFinal = [notasExtra, videoFotosPendiente ? '⚠️ Pendiente: el cliente debe elegir las 40 fotos para el video.' : null]
       .filter(Boolean).join(' ') || null;
-    pasarAEdicionEquipo(p.eqSesId, p.eqCantFotos||null, notasFinal, tieneVideo);
+    pasarAEdicionEquipo(p.eqSesId, p.eqCantFotos||null, notasFinal, tieneVideo, tienePackFotos);
   }
 }
 
@@ -3020,16 +3231,29 @@ function guardarPedido(){
     });
     save(0); cerrarModal(); renderPedidos();
   }
-  // Solo derivar a Renu si es un vínculo NUEVO (no re-guardado del mismo sesId)
+  const effectiveEqSesId = eqSesId || existingEqSesId;
   const isNewLink = eqSesId && eqSesId !== existingEqSesId;
-  console.log('[equipo] guardarPedido — eqSesId:', eqSesId, '| existingEqSesId:', existingEqSesId, '| isNewLink:', isNewLink, '| pagoStatus:', pagoStatus);
-  if (isNewLink && pagoStatus !== 'Sin confirmar') {
-    const notasExtra = _notasParaRenu(prods);
-    const tieneVideo = _tieneVideoBackstage(prods);
-    const videoFotosPendiente = tieneVideo && eqCantFotos && eqCantFotos > 40 && videoFotosVisible && !videoFotosElegidas;
-    const notasFinal = [notasExtra, videoFotosPendiente ? '⚠️ Pendiente: el cliente debe elegir las 40 fotos para el video.' : null]
-      .filter(Boolean).join(' ') || null;
-    pasarAEdicionEquipo(eqSesId, eqCantFotos, notasFinal, tieneVideo);
+  const tieneVideo = _tieneVideoBackstage(prods);
+  const tienePackFotos = _tienePackFotos(prods);
+  console.log('[equipo] guardarPedido — effectiveEqSesId:', effectiveEqSesId, '| isNewLink:', isNewLink, '| pagoStatus:', pagoStatus);
+  if (pagoStatus !== 'Sin confirmar') {
+    if (isNewLink) {
+      const notasExtra = _notasParaRenu(prods);
+      const videoFotosPendiente = tieneVideo && eqCantFotos && eqCantFotos > 40 && videoFotosVisible && !videoFotosElegidas;
+      const notasFinal = [notasExtra, videoFotosPendiente ? '⚠️ Pendiente: el cliente debe elegir las 40 fotos para el video.' : null]
+        .filter(Boolean).join(' ') || null;
+      pasarAEdicionEquipo(eqSesId, eqCantFotos, notasFinal, tieneVideo, tienePackFotos);
+    } else if (effectiveEqSesId && (tieneVideo || tienePackFotos)) {
+      const lista = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : _eqSesiones;
+      const c = lista.find(s => s.id === effectiveEqSesId);
+      if (c) {
+        if (!c.entregables) c.entregables = { video: false, packFotos: false, estado: 'edicion_renu' };
+        if (tieneVideo) c.entregables.video = true;
+        if (tienePackFotos) c.entregables.packFotos = true;
+        _eqSesiones = lista;
+        if (typeof window.saveEquipoSesiones === 'function') window.saveEquipoSesiones(lista);
+      }
+    }
   }
 }
 
