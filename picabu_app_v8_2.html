@@ -558,7 +558,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
   <div class="tab" draggable="true" data-tab="pedidos" onclick="showTab('pedidos')">Pedidos</div>
   <div class="tab active" draggable="true" data-tab="diseno" onclick="showTab('diseno')">Diseño</div>
   <div class="tab" draggable="true" data-tab="envio" onclick="showTab('envio')">Próximo envío</div>
-  <div class="tab" draggable="true" data-tab="excel" onclick="showTab('excel')">Excel</div>
+  <div class="tab" draggable="true" data-tab="excel" onclick="showTab('excel')">Excel<span id="excel-badge" style="display:none;vertical-align:super;width:8px;height:8px;background:#FF3B30;border-radius:50%;margin-left:2px;box-shadow:0 0 0 1.5px #fff;"></span></div>
   <div class="tab" draggable="true" data-tab="precios" onclick="showTab('precios')">Precios</div>
   <div class="tab" draggable="true" data-tab="config" onclick="showTab('config')">Config</div>
   <div class="tab" draggable="true" data-tab="sesiones" onclick="showTab('sesiones')">Sesiones</div>
@@ -1122,6 +1122,31 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
       <button onclick="eq_eliminarSesion()" style="padding:8px 16px;background:none;border:1px solid #c97b7b;border-radius:8px;cursor:pointer;font-size:12px;font-family:'Montserrat',sans-serif;color:#c97b7b;margin-right:auto;">Eliminar</button>
       <button onclick="eq_cerrarModalEditar()" style="padding:8px 18px;background:none;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;font-family:'Montserrat',sans-serif;color:var(--muted);">Cancelar</button>
       <button onclick="eq_guardarSesion()" style="padding:8px 18px;background:var(--marron-d);color:var(--rosa-l);border:none;border-radius:8px;cursor:pointer;font-size:12px;font-family:'Montserrat',sans-serif;">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ENTREGABLES (pestaña Sesiones) -->
+<div class="eq-modal-overlay" id="eq-ent-modal" onclick="if(event.target===this)eqEnt_cerrarEditar()">
+  <div class="eq-mbox" style="max-width:440px;max-height:90vh;overflow-y:auto;">
+    <div class="eq-mbox-title">Editar entregables</div>
+    <div class="eq-fl"><label>Nombre del bebé / sesión</label>
+      <input id="eq-ent-bebe" type="text" autocomplete="off"></div>
+    <div class="eq-fl"><label>Nombre de la mamá</label>
+      <input id="eq-ent-mama" type="text" autocomplete="off"></div>
+    <div class="eq-fl"><label>Paquete</label>
+      <input id="eq-ent-paquete" type="text" autocomplete="off"></div>
+    <div class="eq-fl"><label>Fecha confirmación de fotos</label>
+      <input id="eq-ent-conf" type="date"></div>
+    <div class="eq-fl"><label>Fecha límite entrega — 30 días (editable)</label>
+      <input id="eq-ent-fecha" type="date"></div>
+    <div class="eq-fl"><label>Cantidad de fotos elegidas</label>
+      <input id="eq-ent-cant" type="number" placeholder="Ej: 40" min="1"></div>
+    <div class="eq-fl"><label>Notas para Renu</label>
+      <textarea id="eq-ent-notas" rows="3" placeholder="Ej: el cliente eligió las fotos del set verde"></textarea></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+      <button onclick="eqEnt_cerrarEditar()" style="padding:8px 18px;background:none;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;font-family:'Montserrat',sans-serif;color:var(--muted);">Cancelar</button>
+      <button onclick="eqEnt_guardarEditar()" style="padding:8px 18px;background:var(--marron-d);color:var(--rosa-l);border:none;border-radius:8px;cursor:pointer;font-size:12px;font-family:'Montserrat',sans-serif;">Guardar</button>
     </div>
   </div>
 </div>
@@ -2616,13 +2641,9 @@ function cambiarPago(ci, val) {
   // Auto-derivar a Renu cuando el pedido pasa de "Sin confirmar" a pago real
   if ((val==='Saldo pendiente'||val==='Pagado') && pagoAnterior==='Sin confirmar' && pedidos[ci].eqSesId) {
     const p = pedidos[ci];
-    const notasExtra = _notasParaRenu(p.prods||[]);
     const tieneVideo = _tieneVideoBackstage(p.prods||[]);
     const tienePackFotos = _tienePackFotos(p.prods||[]);
-    const videoFotosPendiente = tieneVideo && p.eqCantFotos && p.eqCantFotos > 40;
-    const notasFinal = [notasExtra, videoFotosPendiente ? '⚠️ Pendiente: el cliente debe elegir las 40 fotos para el video.' : null]
-      .filter(Boolean).join(' ') || null;
-    pasarAEdicionEquipo(p.eqSesId, p.eqCantFotos||null, notasFinal, tieneVideo, tienePackFotos);
+    pasarAEdicionEquipo(p.eqSesId, p.eqCantFotos||null, null, tieneVideo, tienePackFotos);
   }
 }
 
@@ -2827,32 +2848,44 @@ function excelKey(p, x) {
   return `${p.mama}|||${p.bebe}|||${p.fecha}|||${x.codigo||x.nombre}|||${x.cantIdx||0}`;
 }
 
+function _excelCodigo(x) {
+  if (x.soloWA && x.fotosDetalle) {
+    return x.fotosDetalle.tipo === 'rn' ? 'Extra-NB' : 'Extra-baby';
+  }
+  return x.codigo || '—';
+}
+function _excelFechaSort(fecha) {
+  if (!fecha) return '0000-00-00';
+  const p = fecha.split('/');
+  if (p.length !== 3) return fecha;
+  return `${p[2].padStart(4,'0')}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+}
+
 function renderExcel() {
   const el=document.getElementById('lista-excel');
   if(!pedidos.length){el.innerHTML='<div class="empty">No hay pedidos.</div>';return;}
-  const hoy=new Date();
-  const mes=hoy.getMonth()+1;
-  const fecha=hoy.toLocaleDateString('es-AR',{day:'2-digit',month:'short'});
   const cargados=getExcelCargados();
   const pendientes=[];
   const yaEnExcel=[];
-  pedidos.forEach((p,ci)=>p.prods.forEach((x,pi)=>{
+  // Ordenar pedidos por fecha de venta (más antiguo primero)
+  const pedidosOrdenados=[...pedidos].sort((a,b)=>_excelFechaSort(a.fecha).localeCompare(_excelFechaSort(b.fecha)));
+  pedidosOrdenados.forEach(p=>p.prods.forEach(x=>{
     const key = excelKey(p, x);
-    const row={mes,fecha,cliente:`${p.mama} / ${p.bebe}`,codigo:x.codigo||'—',key};
+    const row={fecha:p.fecha||'—',cliente:`${p.mama} / ${p.bebe}`,codigo:_excelCodigo(x),key};
     if(cargados[key]) yaEnExcel.push(row); else pendientes.push(row);
   }));
 
   const pendHtml = pendientes.length
     ? `<div class="excel-wrap"><table class="excel-tbl" id="etbl">
-        <tr><th></th><th>Mes</th><th>Fecha</th><th>Cliente</th><th>Código</th></tr>
+        <tr><th></th><th>Fecha</th><th>Cliente</th><th>Código</th></tr>
         ${pendientes.map(r=>`<tr>
           <td><input type="checkbox" class="excel-chk" data-key="${r.key}" style="accent-color:var(--marron);width:15px;height:15px;cursor:pointer;"></td>
-          <td>${r.mes}</td><td>${r.fecha}</td><td>${r.cliente}</td><td>${r.codigo}</td>
+          <td>${r.fecha}</td><td>${r.cliente}</td><td>${r.codigo}</td>
         </tr>`).join('')}
       </table></div>
       <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
         <button class="btn-copy-e" onclick="selAllPendientes()">Seleccionar todos</button>
-        <button class="btn-copy-e" onclick="copiarExcel()">Copiar tabla</button>
+        <button class="btn-copy-e" onclick="copiarExcel()">Copiar seleccionados</button>
         <button class="btn-copy-e" onclick="marcarCargados()" style="background:var(--marron-d);color:var(--rosa-l);border-color:var(--marron-d);">✓ Marcar seleccionados como cargados</button>
       </div>`
     : `<div style="font-size:13px;color:var(--muted);padding:12px 0;">Todos los pedidos ya están cargados en Excel.</div>`;
@@ -2864,9 +2897,9 @@ function renderExcel() {
         </button>
         <div id="carg-tabla" style="display:none;margin-top:10px;">
           <div class="excel-wrap"><table class="excel-tbl" id="etbl-c" style="opacity:0.6;">
-            <tr><th>Mes</th><th>Fecha</th><th>Cliente</th><th>Código</th></tr>
+            <tr><th>Fecha</th><th>Cliente</th><th>Código</th></tr>
             ${yaEnExcel.map(r=>`<tr>
-              <td>${r.mes}</td><td>${r.fecha}</td><td>${r.cliente}</td><td>${r.codigo}</td>
+              <td>${r.fecha}</td><td>${r.cliente}</td><td>${r.codigo}</td>
             </tr>`).join('')}
           </table></div>
         </div>
@@ -2880,8 +2913,13 @@ function renderExcel() {
 function copiarExcel(){
   const tbl=document.getElementById('etbl');
   if(!tbl)return;
-  const txt=Array.from(tbl.rows).map(r=>Array.from(r.cells).slice(1).map(c=>c.textContent.trim()).join('\t')).join('\n');
-  navigator.clipboard.writeText(txt).then(()=>{event.target.textContent='✓ Copiado';setTimeout(()=>event.target.textContent='Copiar tabla',2000);});
+  const filasSel=Array.from(tbl.rows).filter(r=>{
+    const chk=r.querySelector('.excel-chk');
+    return chk && chk.checked;
+  });
+  if(!filasSel.length){alert('Tildá al menos una fila primero.');return;}
+  const txt=filasSel.map(r=>Array.from(r.cells).slice(1).map(c=>c.textContent.trim()).join('\t')).join('\n');
+  navigator.clipboard.writeText(txt).then(()=>{event.target.textContent='✓ Copiado';setTimeout(()=>event.target.textContent='Copiar seleccionados',2000);});
 }
 
 function marcarCargados(){
@@ -2891,6 +2929,23 @@ function marcarCargados(){
   sel.forEach(k=>{ obj[k]=1; });
   saveExcelCargados(obj);
   renderExcel();
+  actualizarExcelBadge();
+}
+
+function actualizarExcelBadge() {
+  const badge = document.getElementById('excel-badge');
+  if (!badge) return;
+  const cargados = getExcelCargados();
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const tienePendienteAntiguo = pedidos.some(p => {
+    if (!p.fecha) return false;
+    const parts = p.fecha.split('/');
+    if (parts.length !== 3) return false;
+    const fechaPedido = new Date(parseInt(parts[2]), parseInt(parts[1])-1, parseInt(parts[0]));
+    if (Math.floor((hoy - fechaPedido) / 86400000) < 3) return false;
+    return p.prods.some(x => !cargados[excelKey(p, x)]);
+  });
+  badge.style.display = tienePendienteAntiguo ? 'inline-block' : 'none';
 }
 
 function selAllPendientes(){
@@ -3209,7 +3264,7 @@ function guardarPedido(){
     const tipo=document.getElementById('fotos-tipo')?.value||'general';
     if(cant>0){
       const ppu=getPrecioFotos(tipo,cant);
-      prods.push({nombre:`${cant} fotos extras`,codigo:'FOTOS-EXTRA',precio:ppu*cant,estado:'',nota:'',proveedor:'',ultimoCambio:hoy,soloWA:true,fotosDetalle:{cant,ppu,tipo}});
+      prods.push({nombre:`${cant} fotos extras`,codigo:tipo==='rn'?'Extra-NB':'Extra-baby',precio:ppu*cant,estado:'',nota:'',proveedor:'',ultimoCambio:hoy,soloWA:true,fotosDetalle:{cant,ppu,tipo}});
     }
   }
   if(!prods.length){alert('Agregá al menos un producto.');return;}
@@ -3265,11 +3320,7 @@ function guardarPedido(){
   console.log('[equipo] guardarPedido — effectiveEqSesId:', effectiveEqSesId, '| isNewLink:', isNewLink, '| pagoStatus:', pagoStatus);
   if (pagoStatus !== 'Sin confirmar') {
     if (isNewLink) {
-      const notasExtra = _notasParaRenu(prods);
-      const videoFotosPendiente = tieneVideo && eqCantFotos && eqCantFotos > 40 && videoFotosVisible && !videoFotosElegidas;
-      const notasFinal = [notasExtra, videoFotosPendiente ? '⚠️ Pendiente: el cliente debe elegir las 40 fotos para el video.' : null]
-        .filter(Boolean).join(' ') || null;
-      pasarAEdicionEquipo(eqSesId, eqCantFotos, notasFinal, tieneVideo, tienePackFotos);
+      pasarAEdicionEquipo(eqSesId, eqCantFotos, null, tieneVideo, tienePackFotos);
     } else if (effectiveEqSesId && (tieneVideo || tienePackFotos)) {
       const lista = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : _eqSesiones;
       const c = lista.find(s => s.id === effectiveEqSesId);
@@ -3819,6 +3870,113 @@ function renderCardEq(c, idx, compacto) {
   </div>`;
 }
 
+// ─ Entregables mini-cards (pestaña Sesiones) ─
+function _eqEntGrupoKey(c) {
+  if (!c.entregables || (!c.entregables.video && !c.entregables.packFotos)) return null;
+  const est = c.entregables.estado || 'edicion_renu';
+  return _EQ_BUILTIN_GRUPO_MAP[est] || est;
+}
+function renderEqEntregablesCard(c) {
+  const ent = c.entregables;
+  if (!ent || (!ent.video && !ent.packFotos)) return '';
+  const estado = ent.estado || 'edicion_renu';
+  const e = eq_getEstadoInfo(estado);
+  const fechaEntrega = ent.fechaLimite || c.fechaLimite || (c.fechaSesion ? eq_calcLimite(c.fechaSesion, 30) : null);
+  let fechaHtml = '';
+  if (fechaEntrega) {
+    const dE = eq_diasHasta(fechaEntrega);
+    const bc = dE < 0 ? '#c94040' : dE <= 5 ? '#e05050' : dE <= 10 ? '#e0a030' : '#5cad80';
+    const diasTxt = dE < 0 ? `<span style="font-size:11px;color:#c94040;margin-left:5px">(${Math.abs(dE)} días)</span>`
+                  : dE === 0 ? `<span style="font-size:11px;color:#e05050;margin-left:5px">(¡Hoy!)</span>`
+                  : `<span style="font-size:11px;color:${bc};margin-left:5px">(${dE} días)</span>`;
+    fechaHtml = `<div class="eq-info-item"><span class="eq-info-label" style="color:${dE<=5?'#c94040':''};">Entrega</span><span class="eq-info-val" style="color:${bc};font-weight:700;">${eq_fmt(fechaEntrega)}${diasTxt}</span></div>`;
+  }
+  const items = [ent.video ? 'Video de backstage' : null, ent.packFotos ? 'Pack de fotos sin editar' : null].filter(Boolean);
+  const itemsHtml = items.map(it => `<div class="eq-info-item"><span class="eq-info-label">Entregable</span><span class="eq-info-val">${it}</span></div>`).join('');
+  const notasHtml = ent.notas ? `<div class="eq-notas"><div class="eq-notas-label">Notas</div>${ent.notas}</div>` : '';
+  const ENTS = ['pendiente_cliente','edicion_renu','edicion_terminada','subidas'];
+  const popOpts = ENTS.map(id => {
+    const ei = eq_getEstadoInfo(id);
+    return `<button onclick="eqEnt_cambiarEstado('${c.id}','${id}')" style="display:block;width:100%;text-align:left;padding:6px 10px;background:${id===estado?ei.bg:'none'};border:none;border-radius:7px;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;color:#3a2e2a;">${ei.label}</button>`;
+  }).join('');
+  return `<div class="c-card" style="background:#ede8df;margin-bottom:5px;margin-top:-2px;">
+    <div class="c-header">
+      <div class="c-nombres" style="padding-left:2px;">
+        <div class="eq-bebe-row"><span class="c-nombre">${c.bebe||'—'}</span>${c.mama?`<span class="eq-mama-inline">${c.mama}</span>`:''}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+        <button style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;padding:4px;line-height:1;border-radius:6px;" onclick="eqEnt_abrirEditar('${c.id}')" title="Editar entregables">✏️</button>
+        <div class="estado-wrap">
+          <button class="estado-btn" style="background:${e.bg};" onclick="event.stopPropagation();eqEnt_togglePop('${c.id}',this)"><span class="estado-btn-lbl">${e.label}</span><span class="estado-btn-chv"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="#5a4a42" stroke-width="1.5" fill="none"/></svg></span></button>
+          <div class="estado-pop" id="eqentpop-${c.id}"><div class="estado-opts">${popOpts}</div></div>
+        </div>
+      </div>
+    </div>
+    ${fechaHtml||itemsHtml?`<div class="eq-info-row">${fechaHtml}${itemsHtml}</div>`:''}
+    ${notasHtml}
+  </div>`;
+}
+let _eqEntActivePop = null;
+function eqEnt_togglePop(sesId, btn) {
+  const pop = document.getElementById(`eqentpop-${sesId}`);
+  if (!pop) return;
+  const opening = !pop.classList.contains('open');
+  if (_eqEntActivePop) { const prev = document.getElementById(_eqEntActivePop); if (prev) prev.classList.remove('open'); }
+  if (opening) {
+    const r = btn.getBoundingClientRect();
+    const popH = 4 * 34 + 8;
+    const spaceBelow = window.innerHeight - r.bottom - 8;
+    pop.style.top = (spaceBelow < popH ? Math.max(4, r.top - popH - 4) : r.bottom + 4) + 'px';
+    pop.style.left = r.left + 'px';
+  }
+  pop.classList.toggle('open', opening);
+  _eqEntActivePop = opening ? `eqentpop-${sesId}` : null;
+}
+function eqEnt_cambiarEstado(sesId, nuevoEstado) {
+  const c = _eqSesiones.find(x => x.id === sesId);
+  if (!c) return;
+  if (!c.entregables) c.entregables = {};
+  c.entregables.estado = nuevoEstado;
+  eq_save();
+  renderSesionesAngie();
+}
+let _eqEntEditSesId = null;
+function eqEnt_abrirEditar(sesId) {
+  const c = _eqSesiones.find(x => x.id === sesId);
+  if (!c) return;
+  _eqEntEditSesId = sesId;
+  const ent = c.entregables || {};
+  const fechaAutoLimite = c.fechaLimite || (c.fechaSesion ? eq_calcLimite(c.fechaSesion, 30) : null);
+  document.getElementById('eq-ent-bebe').value = c.bebe || '';
+  document.getElementById('eq-ent-mama').value = c.mama || '';
+  document.getElementById('eq-ent-paquete').value = c.paquete || '';
+  document.getElementById('eq-ent-conf').value = c.fechaConfirmacion || '';
+  document.getElementById('eq-ent-fecha').value = ent.fechaLimite || fechaAutoLimite || '';
+  document.getElementById('eq-ent-cant').value = c.cantFotos || '';
+  document.getElementById('eq-ent-notas').value = ent.notas || '';
+  document.getElementById('eq-ent-modal').classList.add('open');
+}
+function eqEnt_cerrarEditar() {
+  document.getElementById('eq-ent-modal').classList.remove('open');
+  _eqEntEditSesId = null;
+}
+function eqEnt_guardarEditar() {
+  if (!_eqEntEditSesId) return;
+  const c = _eqSesiones.find(x => x.id === _eqEntEditSesId);
+  if (!c) return;
+  c.bebe = document.getElementById('eq-ent-bebe').value.trim() || c.bebe;
+  c.mama = document.getElementById('eq-ent-mama').value.trim() || null;
+  c.paquete = document.getElementById('eq-ent-paquete').value.trim() || null;
+  c.fechaConfirmacion = document.getElementById('eq-ent-conf').value || null;
+  c.cantFotos = parseInt(document.getElementById('eq-ent-cant').value) || null;
+  if (!c.entregables) c.entregables = {};
+  c.entregables.fechaLimite = document.getElementById('eq-ent-fecha').value || null;
+  c.entregables.notas = document.getElementById('eq-ent-notas').value.trim() || null;
+  eq_save();
+  eqEnt_cerrarEditar();
+  renderSesionesAngie();
+}
+
 // ─ Render pestaña Sesiones ─
 function renderSesionesAngie() {
   const alertaEl=document.getElementById('eq-alerta-sin-resp-wrap');
@@ -3847,15 +4005,46 @@ function renderSesionesAngie() {
     :'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#ccc;margin-right:4px;vertical-align:middle;"></span>Conectando con Firebase...';
   let html=adelHtml+`<div class="eq-sync-bar">${syncTxt}</div>`;
   const activasOrdenadas=ordenadas.filter(c=>!estaTerminado(c));
-  let _prevGrupoEq=null;
+  // Agrupar sesiones y orphans de entregables
+  const eqGrupoMap={};
+  const eqGrupoOrder=[];
   activasOrdenadas.forEach(c=>{
     const gk=_eqGrupoKey(c);
-    if(gk!==_prevGrupoEq){
-      if(_prevGrupoEq!==null) html+=`<div style="height:14px;"></div>`;
-      html+=`<div class="grupo-label"><span>${_eqGetGrupoLabel(gk)}</span></div>`;
-      _prevGrupoEq=gk;
+    if(!eqGrupoMap[gk]){eqGrupoMap[gk]={sessions:[],orphans:[]};eqGrupoOrder.push(gk);}
+    eqGrupoMap[gk].sessions.push(c);
+    const entGk=_eqEntGrupoKey(c);
+    if(entGk&&entGk!==gk){
+      if(!eqGrupoMap[entGk]){eqGrupoMap[entGk]={sessions:[],orphans:[]};eqGrupoOrder.push(entGk);}
+      eqGrupoMap[entGk].orphans.push(c);
     }
-    html+=renderCardEq(c,_eqSesiones.indexOf(c),false);
+  });
+  eqGrupoOrder.sort((a,b)=>(_EQ_ESTADO_PRIO_DEFAULT[a]??99)-(_EQ_ESTADO_PRIO_DEFAULT[b]??99));
+  let firstEqGrupo=true;
+  eqGrupoOrder.forEach(gk=>{
+    const grupo=eqGrupoMap[gk];
+    if(!grupo.sessions.length&&!grupo.orphans.length) return;
+    if(!firstEqGrupo) html+=`<div style="height:14px;"></div>`;
+    firstEqGrupo=false;
+    html+=`<div class="grupo-label"><span>${_eqGetGrupoLabel(gk)}</span></div>`;
+    const eqFechaSort=c=>{
+      if(c.entregables&&c.entregables.fechaLimite) return c.entregables.fechaLimite;
+      if(c.fechaLimite) return c.fechaLimite;
+      if(c.fechaConfirmacion) return c.fechaConfirmacion;
+      if(c.fechaSesion) return c.fechaSesion;
+      return '9999-99-99';
+    };
+    const allItems=[
+      ...grupo.sessions.map(c=>({c,isOrphan:false})),
+      ...grupo.orphans.map(c=>({c,isOrphan:true}))
+    ].sort((a,b)=>eqFechaSort(a.c).localeCompare(eqFechaSort(b.c)));
+    allItems.forEach(({c,isOrphan})=>{
+      if(!isOrphan){
+        html+=renderCardEq(c,_eqSesiones.indexOf(c),false);
+        if(_eqEntGrupoKey(c)===gk) html+=renderEqEntregablesCard(c);
+      } else {
+        html+=renderEqEntregablesCard(c);
+      }
+    });
   });
   if (terminadas.length) {
     html+=`<hr class="eq-seccion-sep"><div class="eq-seccion-header">
@@ -4212,7 +4401,7 @@ document.addEventListener('click', e => {
   if (!e.target.closest('.estado-wrap')) _activeEqPop = null;
 });
 
-load(); showTab('diseno'); renderTarifasFotos();
+load(); showTab('diseno'); renderTarifasFotos(); actualizarExcelBadge();
 
 // ── ADELANTOS RENU ──────────────────────────────────────────────────────────
 
