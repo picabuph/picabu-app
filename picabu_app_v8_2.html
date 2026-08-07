@@ -2068,7 +2068,7 @@ function _tieneVideoBackstage(prods) {
   return prods.some(p => /video/i.test(p.nombre||'') || /backstage/i.test(p.nombre||''));
 }
 function _tienePackFotos(prods) {
-  return prods.some(p => /pack.*foto/i.test(p.nombre||'') || /fotos?\s+sin\s+editar/i.test(p.nombre||''));
+  return prods.some(p => /pack.*foto/i.test(p.nombre||'') || /fotos?\s+sin\s+editar/i.test(p.nombre||'') || /pack.*sin\s*editar/i.test(p.nombre||''));
 }
 function _hayVideoEnForm() {
   return Array.from(document.querySelectorAll('#prods-form .pf-nombre'))
