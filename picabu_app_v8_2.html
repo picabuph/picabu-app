@@ -1682,6 +1682,17 @@ function selEstado(ci, pi, nombre, prefijo) {
   const hoy = new Date().toLocaleDateString('es-AR');
   pedidos[ci].prods[pi].estado = nombre;
   pedidos[ci].prods[pi].ultimoCambio = hoy;
+  // Aplicar el mismo estado a todas las copias del mismo producto (cantIdx > 0)
+  const prodNombre = pedidos[ci].prods[pi].nombre;
+  const cantTotal = pedidos[ci].prods[pi].cantTotal;
+  if (cantTotal && cantTotal > 1) {
+    pedidos[ci].prods.forEach((x, idx) => {
+      if (idx !== pi && x.nombre === prodNombre && x.cantTotal === cantTotal) {
+        x.estado = nombre;
+        x.ultimoCambio = hoy;
+      }
+    });
+  }
   const esEnProduccionNuevo = nombre === 'En producción' && !pedidos[ci].prods[pi].fechaEnProduccion;
   if (esEnProduccionNuevo) {
     const hoyISO = new Date().toISOString().split('T')[0];
