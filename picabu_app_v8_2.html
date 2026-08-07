@@ -2727,23 +2727,39 @@ function renderEnvio() {
 
   // UIDs ya en un despacho pendiente → excluir del grupo principal
   const uidsDespachados = new Set();
-  despachoPendiente.forEach(d => d.items.forEach(it => { if (it.uid) uidsDespachados.add(it.uid); }));
+  despachoPendiente.forEach(d => d.items.forEach(it => {
+    if (Array.isArray(it.uid)) it.uid.forEach(u => uidsDespachados.add(u));
+    else if (it.uid) uidsDespachados.add(it.uid);
+  }));
 
-  // Construir grupos excluyendo ya despachados
+  // Construir grupos excluyendo ya despachados, agrupando copias del mismo producto
   const grupos = {};
   pedidos.forEach(p => p.prods.forEach(x => {
     if (x.estado === 'En producción' && !esPlantilla(x.nombre) && !uidsDespachados.has(x.uid)) {
       const prov = x.proveedor || 'Sin proveedor asignado';
       if (!grupos[prov]) grupos[prov] = [];
-      grupos[prov].push({
-        uid: x.uid,
-        prod: nombreDiseno(p, x),
-        cliente: p.bebe, mama: p.mama,
-        nped: x.numPedido || '',
-        precio: x.precio || 0,
-        fechaLimiteEntrega: x.fechaLimiteEntrega || '',
-        saldoPendiente: p.pago === 'Saldo pendiente'
-      });
+      const prodNombre = nombreDiseno(p, x);
+      const grupoKey = `${p.bebe}|||${p.mama}|||${prodNombre}`;
+      const existing = grupos[prov].find(it => it._key === grupoKey);
+      if (existing) {
+        existing.uids.push(x.uid);
+        existing.cant++;
+        existing.precio += (x.precio || 0);
+      } else {
+        grupos[prov].push({
+          _key: grupoKey,
+          uid: x.uid,
+          uids: [x.uid],
+          cant: 1,
+          cantTotal: x.cantTotal || 1,
+          prod: prodNombre,
+          cliente: p.bebe, mama: p.mama,
+          nped: x.numPedido || '',
+          precio: x.precio || 0,
+          fechaLimiteEntrega: x.fechaLimiteEntrega || '',
+          saldoPendiente: p.pago === 'Saldo pendiente'
+        });
+      }
     }
   }));
 
@@ -2759,12 +2775,15 @@ function renderEnvio() {
 
   const renderItemRow = (it, conChk) => {
     const npedHtml = it.nped ? `<span style="font-size:11px;background:#d4c8bf;color:#3a2e2a;border-radius:4px;padding:1px 6px;margin-left:6px;font-weight:600;">#${it.nped}</span>` : '';
-    const chk = conChk ? `<input type="checkbox" class="despacho-chk" data-item='${JSON.stringify(it).replace(/'/g,"&#39;")}'>` : '';
+    const displayCant = it.cant > 1 ? it.cant : (it.cantTotal > 1 ? it.cantTotal : 1);
+    const cantBadge = displayCant > 1 ? `<span style="background:#7f6d67;color:#fff;border-radius:10px;padding:2px 7px;font-size:10px;font-weight:600;margin-left:6px;">×${displayCant}</span>` : '';
+    const itemData = JSON.stringify({...it, uid: it.uids || [it.uid]}).replace(/'/g,"&#39;");
+    const chk = conChk ? `<input type="checkbox" class="despacho-chk" data-item='${itemData}'>` : '';
     const saldoHtml = it.saldoPendiente ? `<div style="font-size:10px;color:#c97b00;margin-top:2px;">⚠ Saldo pendiente</div>` : '';
     const fechaCol = it.fechaLimiteEntrega
       ? `<div class="envio-fecha-col" style="text-align:right;">📦 ${fmtFechaLarga(it.fechaLimiteEntrega)}${saldoHtml}</div>`
       : (it.saldoPendiente ? `<div class="envio-fecha-col" style="text-align:right;">${saldoHtml}</div>` : '');
-    return `<div class="envio-row">${chk}<div class="envio-row-info"><div class="envio-cliente">${it.cliente} · ${it.mama}</div><div class="envio-prod">${it.prod}${npedHtml}</div></div>${fechaCol}</div>`;
+    return `<div class="envio-row">${chk}<div class="envio-row-info"><div class="envio-cliente">${it.cliente} · ${it.mama}</div><div class="envio-prod">${it.prod}${cantBadge}${npedHtml}</div></div>${fechaCol}</div>`;
   };
 
   let html = '';
