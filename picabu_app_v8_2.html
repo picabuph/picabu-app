@@ -2291,12 +2291,17 @@ function renderDiseno() {
   const gruposEnt = {};
   const sesionesEnt = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : [];
   pedidos.forEach((p) => {
-    const activos = p.prods.filter(x => x.estado !== 'Entregado' && !x.soloWA && !esPlantilla(x.nombre));
     const equipoS = _findEqSesion(p, sesionesEnt);
-    const videoResuelto = !equipoS || !equipoS.tieneProductos || equipoS.videoSinGrabar === true || equipoS.tareaVideoHecho === true;
+    // tieneProductos===false es explícito "no tiene productos de equipo"; undefined/null = sesión vieja, asumir que SÍ puede tener video
+    const videoResuelto = !equipoS || equipoS.tieneProductos === false || equipoS.videoSinGrabar === true || equipoS.tareaVideoHecho === true;
+    const activos = p.prods.filter(x => x.estado !== 'Entregado' && !x.soloWA && !esPlantilla(x.nombre));
     if (activos.length > 0 && activos.every(x => x.estado === 'Listo en estudio') && videoResuelto) {
       const key = `${p.bebe} · ${p.mama}`;
-      gruposEnt[key] = { tieneSaldo: p.pago === 'Saldo pendiente' };
+      gruposEnt[key] = {
+        tieneSaldo: p.pago === 'Saldo pendiente',
+        videoHecho: equipoS?.tareaVideoHecho === true,
+        tareaVideoHechoTs: equipoS?.tareaVideoHechoTs || null
+      };
     }
   });
 
@@ -2336,21 +2341,34 @@ function renderDiseno() {
   const ahora = Date.now();
   const MS_2DIAS = DIAS_SEGUIMIENTO * 24 * 60 * 60 * 1000;
 
-  // Pendientes: nunca contactados
-  const pendientesEnt = keysEnt.filter(k => !contactados[k]);
-  // Seguimiento saldo: ya contactados, tienen saldo pendiente, pasaron 2+ días
+  // Si el contactado fue ANTES de que el video estuviera listo, era un falso aviso → reaparecer
+  const _esContactadoPostVideo = (c, dat) => {
+    if (!dat.videoHecho) return true;
+    if (c.postVideo) return true;
+    if (dat.tareaVideoHechoTs && c.ts >= dat.tareaVideoHechoTs) return true;
+    return false;
+  };
+  // Pendientes: nunca contactados, o contactados antes de que el video estuviera listo
+  const pendientesEnt = keysEnt.filter(k => {
+    const c = contactados[k];
+    if (!c) return true;
+    return !_esContactadoPostVideo(c, gruposEnt[k]);
+  });
+  // Seguimiento saldo: contactados post-video, tienen saldo pendiente, pasaron 2+ días
   const seguimientoSaldo = keysEnt.filter(k => {
     const c = contactados[k];
     if (!c || !c.ts) return false;
     if (!gruposEnt[k].tieneSaldo) return false;
+    if (!_esContactadoPostVideo(c, gruposEnt[k])) return false;
     return (ahora - c.ts) >= MS_2DIAS;
   });
-  // Seguimiento pagado: ya contactados, pagados, pasaron 15+ días sin retirar
+  // Seguimiento pagado: contactados post-video, pagados, pasaron 15+ días sin retirar
   const MS_15DIAS = 15 * 24 * 60 * 60 * 1000;
   const seguimientoPagado = keysEnt.filter(k => {
     const c = contactados[k];
     if (!c || !c.ts) return false;
     if (gruposEnt[k].tieneSaldo) return false;
+    if (!_esContactadoPostVideo(c, gruposEnt[k])) return false;
     return (ahora - c.ts) >= MS_15DIAS;
   });
 
@@ -3490,7 +3508,14 @@ window.setContactadosFromFirebase = function(contactados) {
 };
 function marcarContactado(key, checked){
   const o=getContactados();
-  if(checked) o[key]={ ts: Date.now() }; else delete o[key];
+  if(checked){
+    const sesiones = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : [];
+    const ped = pedidos.find(p => `${p.bebe} · ${p.mama}` === key);
+    const eqS = ped ? _findEqSesion(ped, sesiones) : null;
+    o[key] = { ts: Date.now(), postVideo: eqS?.tareaVideoHecho === true };
+  } else {
+    delete o[key];
+  }
   saveContactados(o);
   renderDiseno();
 }
