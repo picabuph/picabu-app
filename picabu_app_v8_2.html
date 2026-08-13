@@ -274,6 +274,8 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .total-val { font-family:'Yeseva One',serif; font-size:20px; color:var(--marron-d); }
 .pf-row { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:8px; }
 .pf-extras { display:none; flex-direction:column; gap:5px; border-top:1px dashed var(--border); margin-top:8px; padding-top:8px; }
+.pf-marco { display:none; flex-direction:row; gap:8px; align-items:center; border-top:1px dashed var(--border); margin-top:8px; padding-top:8px; }
+.pf-marco.visible { display:flex; }
 .pf-ext-fila { display:flex; gap:8px; align-items:center; }
 .pf-ext-tipo-lbl { font-size:11px; color:var(--muted); white-space:nowrap; min-width:140px; }
 .pf-ext-n { width:52px; border:1px solid var(--border); border-radius:6px; padding:4px 6px; font-size:12px; font-family:inherit; background:var(--white); color:var(--text); }
@@ -1401,6 +1403,7 @@ window.setPedidosFromFirebase = function(lista) {
       ...(x.extCosto != null && {extCosto: Number(x.extCosto)}),
       ...(x.extHojas != null && {extHojas: Number(x.extHojas)}),
       ...(x.extPlantillas != null && {extPlantillas: Number(x.extPlantillas)}),
+      ...(x.marcoColor && {marcoColor: x.marcoColor}),
       ...(x.fechaEnProduccion != null && {fechaEnProduccion: x.fechaEnProduccion}),
       ...(x.fechaLimiteEntrega != null && {fechaLimiteEntrega: x.fechaLimiteEntrega})
     }));
@@ -1437,6 +1440,7 @@ function load() {
         ...(x.extCosto != null && {extCosto: Number(x.extCosto)}),
         ...(x.extHojas != null && {extHojas: Number(x.extHojas)}),
         ...(x.extPlantillas != null && {extPlantillas: Number(x.extPlantillas)}),
+        ...(x.marcoColor && {marcoColor: x.marcoColor}),
         ...(x.fechaEnProduccion != null && {fechaEnProduccion: x.fechaEnProduccion}),
         ...(x.fechaLimiteEntrega != null && {fechaLimiteEntrega: x.fechaLimiteEntrega})
       }));
@@ -1794,6 +1798,7 @@ function prodRowHtml(ci, x, pi, showPrecio, allowNameEdit, prefijo, pedido) {
     : '';
 
   const extrasPartes = [];
+  if (x.marcoColor) extrasPartes.push(x.marcoColor === 'madera' ? 'Marco madera' : 'Marco blanco');
   if (x.extHojas > 0) extrasPartes.push(`+${x.extHojas} hoja${x.extHojas===1?'':'s'} simple${x.extHojas===1?'':'s'}`);
   if (x.extPlantillas > 0) extrasPartes.push(`+${x.extPlantillas} plantilla${x.extPlantillas===1?'':'s'}`);
   const extrasLabel = extrasPartes.length
@@ -2599,7 +2604,7 @@ function abrirEditar(ci) {
   let fotosExtrasProd = null;
   p.prods.forEach(x => {
     if (x.soloWA && x.fotosDetalle) { fotosExtrasProd = x; return; }
-    const key = `${x.nombre}__${x.codigo}__${x.precio}`;
+    const key = `${x.nombre}__${x.codigo}__${x.precio}__${x.marcoColor||''}`;
     const exist = agrupados.find(a => a.key === key);
     if (exist) { exist.cant++; } else { agrupados.push({key, x, cant:1}); }
   });
@@ -2619,8 +2624,16 @@ function abrirEditar(ci) {
       <div class="prec-w"><span>$</span><input type="number" class="pf-price" value="${x.precioBase||x.precio||0}" min="0" oninput="recalc()"></div>
       <input type="number" class="pf-inp pf-cant" placeholder="cant" min="1" value="${cant>1?cant:''}" style="text-align:center;padding:8px 6px;" oninput="recalc()">
       <button class="btn-rm" onclick="this.closest('.pf-row').remove();recalc()">×</button>
-    </div>${_extrasDropHtml(id)}`;
+    </div>${_marcoColorHtml(id)}${_extrasDropHtml(id)}`;
     container.appendChild(div);
+    // Mostrar selector de marco si el producto es enmarcado
+    if (/enmarcado|cuadro/i.test(x.nombre||'')) {
+      const marcoDiv = div.querySelector('.pf-marco');
+      if (marcoDiv) {
+        marcoDiv.classList.add('visible');
+        if (x.marcoColor) div.querySelector('.pf-marco-color').value = x.marcoColor;
+      }
+    }
     // Activar extras solo para Fotolibro Premium
     if(/fotolibro\s+premium/i.test(x.nombre||'')&&/\(\d+\s*(?:H\b|hojas?)/i.test(x.nombre||'')){
       _initRowExtras(div, x.nombre, x.precioBase||x.precio);
@@ -2778,7 +2791,8 @@ function renderEnvio() {
           nped: x.numPedido || '',
           precio: x.precio || 0,
           fechaLimiteEntrega: x.fechaLimiteEntrega || '',
-          saldoPendiente: p.pago === 'Saldo pendiente'
+          saldoPendiente: p.pago === 'Saldo pendiente',
+          marcoColor: x.marcoColor || ''
         });
       }
     }
@@ -2805,7 +2819,8 @@ function renderEnvio() {
     const fechaCol = it.fechaLimiteEntrega
       ? `<div class="envio-fecha-col" style="text-align:right;">📦 ${fmtFechaLarga(it.fechaLimiteEntrega)}${saldoHtml}</div>`
       : (it.saldoPendiente ? `<div class="envio-fecha-col" style="text-align:right;">${saldoHtml}</div>` : '');
-    return `<div class="envio-row">${chk}<div class="envio-row-info"><div class="envio-cliente">${it.cliente} · ${it.mama}</div><div class="envio-prod">${it.prod}${cantBadge}${npedHtml}</div></div>${fechaCol}</div>`;
+    const marcoHtml = it.marcoColor ? `<span style="font-size:10px;font-style:italic;color:var(--muted);margin-left:5px;">${it.marcoColor==='madera'?'Marco madera':'Marco blanco'}</span>` : '';
+    return `<div class="envio-row">${chk}<div class="envio-row-info"><div class="envio-cliente">${it.cliente} · ${it.mama}</div><div class="envio-prod">${it.prod}${cantBadge}${npedHtml}${marcoHtml}</div></div>${fechaCol}</div>`;
   };
 
   let html = '';
@@ -2846,9 +2861,10 @@ function renderEnvio() {
             const npedHtml = it.nped ? `<span style="font-size:10px;background:#d4c8bf;color:#3a2e2a;border-radius:4px;padding:1px 5px;margin-left:5px;font-weight:600;">#${it.nped}</span>` : '';
             const dc = it.cant > 1 ? it.cant : (it.cantTotal > 1 ? it.cantTotal : 1);
             const cantB = dc > 1 ? `<span style="background:#7f6d67;color:#fff;border-radius:10px;padding:2px 7px;font-size:10px;font-weight:600;margin-left:5px;">×${dc}</span>` : '';
+            const marcoB = it.marcoColor ? `<span style="font-size:10px;font-style:italic;color:var(--muted);margin-left:5px;">${it.marcoColor==='madera'?'Marco madera':'Marco blanco'}</span>` : '';
             return `<div class="despacho-item"><div class="despacho-item-left">
               <span class="despacho-item-cliente">${it.cliente} · ${it.mama}</span>
-              <span class="despacho-item-prod">${it.prod}${cantB}${npedHtml}</span>
+              <span class="despacho-item-prod">${it.prod}${cantB}${npedHtml}${marcoB}</span>
             </div></div>`;
           }).join('')}
         </div>
@@ -2876,9 +2892,10 @@ function renderEnvio() {
             const npedHtml = it.nped ? `<span style="font-size:10px;background:#d4c8bf;color:#3a2e2a;border-radius:4px;padding:1px 5px;margin-left:5px;font-weight:600;">#${it.nped}</span>` : '';
             const dc = it.cant > 1 ? it.cant : (it.cantTotal > 1 ? it.cantTotal : 1);
             const cantB = dc > 1 ? `<span style="background:#7f6d67;color:#fff;border-radius:10px;padding:2px 7px;font-size:10px;font-weight:600;margin-left:5px;">×${dc}</span>` : '';
+            const marcoB = it.marcoColor ? `<span style="font-size:10px;font-style:italic;color:var(--muted);margin-left:5px;">${it.marcoColor==='madera'?'Marco madera':'Marco blanco'}</span>` : '';
             return `<div class="despacho-item"><div class="despacho-item-left">
               <span class="despacho-item-cliente">${it.cliente} · ${it.mama}</span>
-              <span class="despacho-item-prod">${it.prod}${cantB}${npedHtml}</span>
+              <span class="despacho-item-prod">${it.prod}${cantB}${npedHtml}${marcoB}</span>
             </div></div>`;
           }).join('')}
         </div>
@@ -3162,6 +3179,16 @@ function _buscarPrecioPlantilla(cant) {
   }
   return 0;
 }
+function _marcoColorHtml(id) {
+  return `<div class="pf-marco" id="pfmarco-${id}">
+    <span class="pf-ext-tipo-lbl">Color del marco:</span>
+    <select class="pf-marco-color" style="border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:12px;font-family:inherit;background:var(--white);color:var(--text);">
+      <option value="">— elegir —</option>
+      <option value="blanco">Marco blanco</option>
+      <option value="madera">Marco color madera</option>
+    </select>
+  </div>`;
+}
 function _extrasDropHtml(id) {
   return `<div class="pf-extras" id="pfext-${id}">
     <input type="hidden" class="pf-ext-cost" value="0">
@@ -3193,7 +3220,7 @@ function addProdRow() {
     <div class="prec-w"><span>$</span><input type="number" class="pf-price" placeholder="0" min="0" oninput="recalc()"></div>
     <input type="number" class="pf-inp pf-cant" placeholder="cant" min="1" value="" style="text-align:center;padding:8px 6px;" oninput="recalc()">
     <button class="btn-rm" onclick="this.closest('.pf-row').remove();recalc()">×</button>
-  </div>${_extrasDropHtml(id)}`;
+  </div>${_marcoColorHtml(id)}${_extrasDropHtml(id)}`;
   container.appendChild(div);
 }
 
@@ -3212,6 +3239,13 @@ function selProd(opt,id){
   ni.value=nombre; ni.dataset.codigo=opt.dataset.c;
   const basePrice=Number(opt.dataset.p);
   row.querySelector('.pf-price').value=basePrice;
+  // Marco color: solo para Enmarcado / Cuadro
+  const esEnmarcado=/enmarcado|cuadro/i.test(nombre);
+  const marcoDiv=row.querySelector('.pf-marco');
+  if(marcoDiv){
+    if(esEnmarcado) marcoDiv.classList.add('visible');
+    else { marcoDiv.classList.remove('visible'); marcoDiv.querySelector('.pf-marco-color').value=''; }
+  }
   // Extras solo para Fotolibro Premium con hojas en el nombre
   const esPremiumConHojas=/fotolibro\s+premium/i.test(nombre)&&/\(\d+\s*(?:H\b|hojas?)/i.test(nombre);
   const extDiv=row.querySelector('.pf-extras');
@@ -3308,9 +3342,10 @@ function guardarPedido(){
     const extPlantillas=Number(row.querySelector('.pf-ext-n-plant')?.value||0);
     const precio=precioBase+extCosto;
     const cant=Math.max(1,Number(row.querySelector('.pf-cant')?.value||1));
+    const marcoColor=row.querySelector('.pf-marco-color')?.value||'';
     if(nombre){
       for(let q=0;q<cant;q++){
-        prods.push({nombre,codigo,precio,precioBase,extCosto,extHojas,extPlantillas,estado:'',nota:'',proveedor:'',ultimoCambio:hoy,cantIdx:q,cantTotal:cant,uid:'u'+Date.now()+Math.random().toString(36).substr(2,6)});
+        prods.push({nombre,codigo,precio,precioBase,extCosto,extHojas,extPlantillas,marcoColor,estado:'',nota:'',proveedor:'',ultimoCambio:hoy,cantIdx:q,cantTotal:cant,uid:'u'+Date.now()+Math.random().toString(36).substr(2,6)});
       }
     }
   });
