@@ -2107,7 +2107,7 @@ function pasarAEdicionEquipo(sesId, cantFotos, notasExtra, tieneVideo, tienePack
   if (ESTADOS_PREVIOS_EQ.includes(c.estado)) {
     c.estado = 'edicion_renu';
     c.fechaConfirmacion = eq_hoy();
-    if (!c.fechaLimite) c.fechaLimite = eq_calcLimite(eq_hoy(), 30);
+    c.fechaLimite = eq_calcLimite(eq_hoy(), 30);
     if (cantFotos) c.cantFotos = cantFotos;
   }
   c.tieneProductos = true;
@@ -2685,7 +2685,8 @@ function cambiarPago(ci, val) {
     const p = pedidos[ci];
     const tieneVideo = _tieneVideoBackstage(p.prods||[]);
     const tienePackFotos = _tienePackFotos(p.prods||[]);
-    pasarAEdicionEquipo(p.eqSesId, p.eqCantFotos||null, null, tieneVideo, tienePackFotos);
+    const _fotosExtCant = (p.prods||[]).filter(x=>x.soloWA&&x.fotosDetalle).reduce((s,x)=>s+(x.fotosDetalle.cant||0),0);
+    pasarAEdicionEquipo(p.eqSesId, p.eqCantFotos||_fotosExtCant||null, null, tieneVideo, tienePackFotos);
   }
 }
 
@@ -3412,7 +3413,8 @@ function guardarPedido(){
   console.log('[equipo] guardarPedido — effectiveEqSesId:', effectiveEqSesId, '| isNewLink:', isNewLink, '| pagoStatus:', pagoStatus);
   if (pagoStatus !== 'Sin confirmar') {
     if (isNewLink) {
-      pasarAEdicionEquipo(eqSesId, eqCantFotos, null, tieneVideo, tienePackFotos);
+      const _fotosExtCant2 = prods.filter(x=>x.soloWA&&x.fotosDetalle).reduce((s,x)=>s+(x.fotosDetalle.cant||0),0);
+      pasarAEdicionEquipo(eqSesId, eqCantFotos||_fotosExtCant2||null, null, tieneVideo, tienePackFotos);
     } else if (effectiveEqSesId && (tieneVideo || tienePackFotos)) {
       const lista = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : _eqSesiones;
       const c = lista.find(s => s.id === effectiveEqSesId);
