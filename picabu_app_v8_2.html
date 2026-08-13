@@ -2709,16 +2709,19 @@ function saveDespachos(arr) {
   if (typeof window.saveDespachoToFirebase === 'function') window.saveDespachoToFirebase(arr);
 }
 
-function confirmarDespachoFn() {
-  const fechaEl = document.getElementById('despacho-fecha');
+function confirmarDespachoFn(prov) {
+  const provKey = prov.replace(/[^a-z0-9]/gi, '_');
+  const fechaEl = document.getElementById('despacho-fecha-' + provKey);
   if (!fechaEl?.value) { fechaEl?.focus(); return; }
   const items = [];
   document.querySelectorAll('.despacho-chk:checked').forEach(chk => {
-    try { items.push(JSON.parse(chk.dataset.item)); } catch(e) {}
+    if (chk.dataset.prov === prov) {
+      try { items.push(JSON.parse(chk.dataset.item)); } catch(e) {}
+    }
   });
   if (!items.length) { alert('Seleccioná al menos un producto para despachar.'); return; }
   const total = items.reduce((s, it) => s + (it.precio || 0), 0);
-  const despacho = { id: 'ds-' + Date.now(), fecha: fechaEl.value, proveedor: 'COPY', items, pago: 'pendiente', total };
+  const despacho = { id: 'ds-' + Date.now(), fecha: fechaEl.value, proveedor: prov, items, pago: 'pendiente', total };
   const arr = getDespachos();
   arr.unshift(despacho);
   saveDespachos(arr);
@@ -2791,12 +2794,13 @@ function renderEnvio() {
 
   const fmtDespacho = d => d.fecha ? new Date(d.fecha + 'T12:00').toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit', year:'numeric'}) : '—';
 
-  const renderItemRow = (it, conChk) => {
+  const renderItemRow = (it, conChk, provName) => {
     const npedHtml = it.nped ? `<span style="font-size:11px;background:#d4c8bf;color:#3a2e2a;border-radius:4px;padding:1px 6px;margin-left:6px;font-weight:600;">#${it.nped}</span>` : '';
     const displayCant = it.cant > 1 ? it.cant : (it.cantTotal > 1 ? it.cantTotal : 1);
     const cantBadge = displayCant > 1 ? `<span style="background:#7f6d67;color:#fff;border-radius:10px;padding:2px 7px;font-size:10px;font-weight:600;margin-left:6px;">×${displayCant}</span>` : '';
     const itemData = JSON.stringify({...it, uid: it.uids || [it.uid]}).replace(/'/g,"&#39;");
-    const chk = conChk ? `<input type="checkbox" class="despacho-chk" data-item='${itemData}'>` : '';
+    const provAttr = provName ? ` data-prov='${provName.replace(/'/g,"&#39;")}'` : '';
+    const chk = conChk ? `<input type="checkbox" class="despacho-chk"${provAttr} data-item='${itemData}'>` : '';
     const saldoHtml = it.saldoPendiente ? `<div style="font-size:10px;color:#c97b00;margin-top:2px;">⚠ Saldo pendiente</div>` : '';
     const fechaCol = it.fechaLimiteEntrega
       ? `<div class="envio-fecha-col" style="text-align:right;">📦 ${fmtFechaLarga(it.fechaLimiteEntrega)}${saldoHtml}</div>`
@@ -2810,10 +2814,11 @@ function renderEnvio() {
   if (Object.keys(grupos).length) {
     html = Object.entries(grupos).map(([prov, items]) => {
       sortByFecha(items);
-      const esCOPY = prov === 'COPY';
-      const itemsHtml = items.map(it => renderItemRow(it, esCOPY)).join('');
+      const provKey = prov.replace(/[^a-z0-9]/gi, '_');
+      const provEsc = prov.replace(/'/g, "\\'");
+      const itemsHtml = items.map(it => renderItemRow(it, true, prov)).join('');
       const hoy = new Date().toISOString().split('T')[0];
-      const despachoBar = esCOPY ? `<div class="despacho-bar"><label>Fecha de despacho</label><input type="date" id="despacho-fecha" value="${hoy}"><button class="btn-despacho" onclick="confirmarDespachoFn()">Confirmar despacho</button></div>` : '';
+      const despachoBar = `<div class="despacho-bar"><label>Fecha de despacho</label><input type="date" id="despacho-fecha-${provKey}" value="${hoy}"><button class="btn-despacho" onclick="confirmarDespachoFn('${provEsc}')">Confirmar despacho</button></div>`;
       return `<div class="envio-group"><div class="envio-prov">${prov}</div>${itemsHtml}${despachoBar}</div>`;
     }).join('');
   } else if (!despachoPendiente.length) {
@@ -2827,7 +2832,7 @@ function renderEnvio() {
       const pagoClass = d.pago === 'realizado' ? 'realizado' : 'pendiente';
       return `<div class="despacho-card">
         <div class="despacho-card-head">
-          <div><span class="despacho-card-fecha">${fmtDespacho(d)}</span><span class="despacho-card-meta">${d.items.length} producto${d.items.length !== 1 ? 's' : ''}</span></div>
+          <div>${d.proveedor ? `<span style="font-family:'Yeseva One',serif;font-size:14px;color:#3a2e2a;margin-right:8px;">${d.proveedor}</span>` : ''}<span class="despacho-card-fecha">${fmtDespacho(d)}</span><span class="despacho-card-meta">${d.items.length} producto${d.items.length !== 1 ? 's' : ''}</span></div>
           <div class="despacho-card-acciones">
             <select class="despacho-pago-sel ${pagoClass}" onchange="cambiarPagoDespacho('${d.id}',this.value)">
               <option value="pendiente" ${d.pago==='pendiente'?'selected':''}>Esperando entrega</option>
@@ -2839,9 +2844,11 @@ function renderEnvio() {
         <div class="despacho-card-body">
           ${d.items.map(it => {
             const npedHtml = it.nped ? `<span style="font-size:10px;background:#d4c8bf;color:#3a2e2a;border-radius:4px;padding:1px 5px;margin-left:5px;font-weight:600;">#${it.nped}</span>` : '';
+            const dc = it.cant > 1 ? it.cant : (it.cantTotal > 1 ? it.cantTotal : 1);
+            const cantB = dc > 1 ? `<span style="background:#7f6d67;color:#fff;border-radius:10px;padding:2px 7px;font-size:10px;font-weight:600;margin-left:5px;">×${dc}</span>` : '';
             return `<div class="despacho-item"><div class="despacho-item-left">
               <span class="despacho-item-cliente">${it.cliente} · ${it.mama}</span>
-              <span class="despacho-item-prod">${it.prod}${npedHtml}</span>
+              <span class="despacho-item-prod">${it.prod}${cantB}${npedHtml}</span>
             </div></div>`;
           }).join('')}
         </div>
@@ -2851,11 +2858,11 @@ function renderEnvio() {
 
   // Historial (entregados)
   if (despachoHistorial.length) {
-    html += `<div class="historial-titulo">Historial de despachos COPY</div>`;
+    html += `<div class="historial-titulo">Historial de despachos</div>`;
     html += despachoHistorial.map(d => {
       return `<div class="despacho-card">
         <div class="despacho-card-head">
-          <div><span class="despacho-card-fecha">${fmtDespacho(d)}</span><span class="despacho-card-meta">${d.items.length} producto${d.items.length !== 1 ? 's' : ''}</span></div>
+          <div>${d.proveedor ? `<span style="font-family:'Yeseva One',serif;font-size:14px;color:#3a2e2a;margin-right:8px;">${d.proveedor}</span>` : ''}<span class="despacho-card-fecha">${fmtDespacho(d)}</span><span class="despacho-card-meta">${d.items.length} producto${d.items.length !== 1 ? 's' : ''}</span></div>
           <div class="despacho-card-acciones">
             <select class="despacho-pago-sel realizado" onchange="cambiarPagoDespacho('${d.id}',this.value)">
               <option value="pendiente">Esperando entrega</option>
@@ -2867,9 +2874,11 @@ function renderEnvio() {
         <div class="despacho-card-body">
           ${d.items.map(it => {
             const npedHtml = it.nped ? `<span style="font-size:10px;background:#d4c8bf;color:#3a2e2a;border-radius:4px;padding:1px 5px;margin-left:5px;font-weight:600;">#${it.nped}</span>` : '';
+            const dc = it.cant > 1 ? it.cant : (it.cantTotal > 1 ? it.cantTotal : 1);
+            const cantB = dc > 1 ? `<span style="background:#7f6d67;color:#fff;border-radius:10px;padding:2px 7px;font-size:10px;font-weight:600;margin-left:5px;">×${dc}</span>` : '';
             return `<div class="despacho-item"><div class="despacho-item-left">
               <span class="despacho-item-cliente">${it.cliente} · ${it.mama}</span>
-              <span class="despacho-item-prod">${it.prod}${npedHtml}</span>
+              <span class="despacho-item-prod">${it.prod}${cantB}${npedHtml}</span>
             </div></div>`;
           }).join('')}
         </div>
