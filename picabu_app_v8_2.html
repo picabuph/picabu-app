@@ -56,8 +56,23 @@
       }
     }
     if (d && d.despachos !== undefined) {
-      localStorage.setItem('picabu_despachos', JSON.stringify(d.despachos));
+      const firebaseDespachos = d.despachos;
+      const localDespachos = (() => { try { return JSON.parse(localStorage.getItem('picabu_despachos') || '[]'); } catch(e) { return []; } })();
+      const firebaseIds = new Set(firebaseDespachos.map(x => x.id));
+      const localOnly = localDespachos.filter(x => !firebaseIds.has(x.id));
+      if (localOnly.length > 0) {
+        const merged = [...firebaseDespachos, ...localOnly].sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+        localStorage.setItem('picabu_despachos', JSON.stringify(merged));
+        setDoc(REF, { despachos: merged }, { merge: true }).catch(e => console.warn('Firebase despachos migrate:', e));
+      } else {
+        localStorage.setItem('picabu_despachos', JSON.stringify(firebaseDespachos));
+      }
       if (typeof renderEnvio === 'function') renderEnvio();
+    } else {
+      const localDespachos = (() => { try { return JSON.parse(localStorage.getItem('picabu_despachos') || '[]'); } catch(e) { return []; } })();
+      if (localDespachos.length > 0) {
+        setDoc(REF, { despachos: localDespachos }, { merge: true }).catch(e => console.warn('Firebase despachos migrate:', e));
+      }
     }
   } });
   window.saveDespachoToFirebase = async function(arr) {
