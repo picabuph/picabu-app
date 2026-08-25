@@ -83,7 +83,7 @@
     try {
       const clean = JSON.parse(JSON.stringify(data, (k,v) => v === undefined ? null : v));
       const contactados = (() => { try { return JSON.parse(localStorage.getItem('picabu_contactados') || '{}'); } catch(e) { return {}; } })();
-      await setDoc(REF, { lista: clean, contactados, updated: new Date().toISOString() });
+      await setDoc(REF, { lista: clean, contactados, updated: new Date().toISOString() }, { merge: true });
     } catch(e) { console.warn("Firebase:", e); throw e; }
   };
   window.saveContactadosToFirebase = async function(contactados) {
@@ -2114,28 +2114,29 @@ function _actualizarVideoFotosCheck() {
 
 function pasarAEdicionEquipo(sesId, cantFotos, notasExtra, tieneVideo, tienePackFotos) {
   const lista = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : _eqSesiones;
-  console.log('[equipo] pasarAEdicionEquipo llamada — sesId:', sesId, '| sesiones cargadas:', lista.length);
   const idx = lista.findIndex(s => s.id === sesId);
   if (idx < 0) { console.warn('[equipo] sesión no encontrada:', sesId); return; }
   const c = lista[idx];
-  console.log('[equipo] sesión encontrada:', c.bebe, '| estado actual:', c.estado, '| puede cambiar:', ESTADOS_PREVIOS_EQ.includes(c.estado));
+  let cambio = false;
   if (ESTADOS_PREVIOS_EQ.includes(c.estado)) {
     c.estado = 'edicion_renu';
     c.fechaConfirmacion = eq_hoy();
     c.fechaLimite = eq_calcLimite(eq_hoy(), 30);
     if (cantFotos) c.cantFotos = cantFotos;
+    cambio = true;
   }
-  c.tieneProductos = true;
+  if (!c.tieneProductos) { c.tieneProductos = true; cambio = true; }
   if (tieneVideo || tienePackFotos) {
-    if (!c.entregables) c.entregables = { video: false, packFotos: false, estado: 'edicion_renu' };
-    if (tieneVideo) c.entregables.video = true;
-    if (tienePackFotos) c.entregables.packFotos = true;
+    if (!c.entregables) { c.entregables = { video: false, packFotos: false, estado: 'edicion_renu' }; cambio = true; }
+    if (tieneVideo && !c.entregables.video) { c.entregables.video = true; cambio = true; }
+    if (tienePackFotos && !c.entregables.packFotos) { c.entregables.packFotos = true; cambio = true; }
   }
   if (notasExtra) {
     const existingNotas = c.notas || '';
     const lineasNuevas = notasExtra.split('\n').filter(l => l.trim() && !existingNotas.includes(l.trim()));
-    if (lineasNuevas.length) c.notas = existingNotas ? (existingNotas + '\n' + lineasNuevas.join('\n')) : lineasNuevas.join('\n');
+    if (lineasNuevas.length) { c.notas = existingNotas ? (existingNotas + '\n' + lineasNuevas.join('\n')) : lineasNuevas.join('\n'); cambio = true; }
   }
+  if (!cambio) return;
   _eqSesiones = lista;
   if (typeof window.saveEquipoSesiones === 'function') window.saveEquipoSesiones(lista);
   renderSesionesAngie();
