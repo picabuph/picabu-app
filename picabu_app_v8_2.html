@@ -584,7 +584,6 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 
 <div class="container">
   <div class="page active" id="tab-pedidos">
-    <div id="adel-notif-area" style="padding:14px 14px 0;max-width:800px;margin:0 auto;"></div>
     <div style="display:flex;align-items:center;gap:8px;max-width:800px;margin:0 auto;padding:6px 14px 0;">
       <button class="btn-nuevo" onclick="abrirModal()" style="margin:0;">+ Nuevo pedido</button>
       <div style="flex:1;"></div>
@@ -903,6 +902,7 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
   </div></div>
   </div>
   <div class="page" id="tab-diseno">
+    <div id="adel-notif-area-diseno" style="padding:14px 14px 0;max-width:800px;margin:0 auto;"></div>
     <div style="display:flex;justify-content:flex-end;max-width:800px;margin:0 auto;padding:4px 14px 0;">
       <div style="display:flex;align-items:center;gap:4px;background:var(--white);border:1px solid var(--border);border-radius:20px;padding:4px 10px;">
         <span style="font-size:13px;color:var(--muted);">🔍</span>
@@ -4708,15 +4708,22 @@ function adel_confirmarEnvio(sesId, adelId) {
   adel_renderNotifAngie();
 }
 
+function _adelGetDismissed() {
+  try { return JSON.parse(localStorage.getItem('adel_notif_dismissed') || '[]'); } catch(e) { return []; }
+}
+
 function adel_confirmarRecibido(sesId, adelId) {
-  _adelUpdateOnSesion(sesId, adelId, { estado: 'completado' });
+  const dismissed = _adelGetDismissed();
+  if (!dismissed.includes(adelId)) dismissed.push(adelId);
+  localStorage.setItem('adel_notif_dismissed', JSON.stringify(dismissed));
   adel_renderNotifAngie();
 }
 
 function adel_renderNotifAngie() {
-  const el = document.getElementById('adel-notif-area');
+  const el = document.getElementById('adel-notif-area-diseno');
   if (!el) return;
-  const enviados = _adelGetAll().filter(a => a.estado === 'enviado_angie');
+  const dismissed = _adelGetDismissed();
+  const enviados = _adelGetAll().filter(a => a.estado === 'enviado_angie' && !dismissed.includes(a.id));
   if (!enviados.length) { el.innerHTML = ''; return; }
   el.innerHTML = enviados.map(a => `<div class="adel-notif-banner">
     <span class="adel-notif-icon">📦</span>
