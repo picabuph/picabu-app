@@ -235,6 +235,10 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
 .pago-pagado { background:#d4edda; color:#1a5c2a; }
 .pago-saldo { background:#fad7d7; color:#8b1a1a; }
 .pago-sinconfirmar { background:#fdf0d8; color:#8a5e20; }
+/* Estado de pago dentro del modal de pedido: mismo esquema de color, pero con más peso
+   visual y un borde de alerta mientras no está confirmado, para que no pase desapercibido. */
+.pago-status-select.pago-vacio, .pago-status-select.pago-sinconfirmar { border-color:#c94040 !important; box-shadow:0 0 0 3px rgba(201,64,64,0.12); }
+.pago-status-select.pago-pagado, .pago-status-select.pago-saldo { border-color:transparent !important; box-shadow:none; }
 
 /* PROD ROW */
 .c-body { padding:4px 18px 10px; }
@@ -1264,9 +1268,9 @@ header { background:var(--marron-d); padding:14px 20px; display:flex; align-item
     </div>
     <div class="total-box"><span class="total-label">Total</span><span class="total-val" id="total-rt">$0</span></div>
     <div class="fg"><label>Pagos / saldo</label><input type="text" id="f-pagos" placeholder="Ej: $250.000 TRF + saldo efectivo abril"></div>
-    <div class="fg"><label>Estado del pedido</label>
-      <select id="f-pago-status" style="border:1px solid var(--arena);border-radius:8px;padding:8px;font-family:'Montserrat',sans-serif;font-size:13px;background:#fff;width:100%;">
-        <option value="">Sin definir</option>
+    <div class="fg"><label style="font-weight:700;">⚠ Estado del pedido — revisá siempre antes de guardar</label>
+      <select id="f-pago-status" class="pago-status-select pago-vacio" onchange="_actualizarColorPagoStatus()" style="border:2px solid transparent;border-radius:8px;padding:10px;font-family:'Montserrat',sans-serif;font-size:14px;font-weight:700;width:100%;cursor:pointer;">
+        <option value="">— Elegir estado —</option>
         <option value="Sin confirmar">⏸ Sin confirmar (esperando pago)</option>
         <option value="Saldo pendiente">Saldo pendiente</option>
         <option value="Pagado">✓ Pagado</option>
@@ -2654,6 +2658,7 @@ function abrirEditar(ci) {
   document.getElementById('f-pagos').value = p.pagos || '';
   document.getElementById('f-notas').value = p.notas || '';
   document.getElementById('f-pago-status').value = p.pago || '';
+  _actualizarColorPagoStatus();
   const container = document.getElementById('prods-form');
   container.innerHTML = '';
   // Agrupar productos por nombre+codigo+precio para mostrar cantidad
@@ -2727,6 +2732,13 @@ function abrirEditar(ci) {
   }
   document.getElementById('modal').classList.add('open');
   document.getElementById('btn-eliminar-pedido').style.display = 'inline-block';
+}
+
+function _actualizarColorPagoStatus() {
+  const sel = document.getElementById('f-pago-status');
+  if (!sel) return;
+  const val = sel.value;
+  sel.className = 'pago-status-select ' + (val==='Pagado'?'pago-pagado':val==='Saldo pendiente'?'pago-saldo':val==='Sin confirmar'?'pago-sinconfirmar':'pago-vacio');
 }
 
 function cambiarPago(ci, val) {
@@ -3118,6 +3130,7 @@ function abrirModal() {
   _eqVinculoManualSesId = null;
   document.getElementById('modal-titulo').textContent = 'Nuevo pedido';
   ['f-bebe','f-mama','f-pagos','f-notas','f-pago-status'].forEach(id=>document.getElementById(id).value='');
+  _actualizarColorPagoStatus();
   document.getElementById('prods-form').innerHTML='';
   document.getElementById('total-rt').textContent='$0';
   document.getElementById('fotos-extras-form').style.display='none';
@@ -3131,10 +3144,28 @@ function abrirModal() {
 function cerrarModal(){document.getElementById('modal').classList.remove('open'); document.getElementById('btn-eliminar-pedido').style.display='none'; editCI=null; const s=document.getElementById('eq-vinculo-section'); if(s) s.style.display='none'; const vr=document.getElementById('video-reminder-section'); if(vr) vr.style.display='none'; const ap=document.getElementById('adel-picabu-section'); if(ap) ap.style.display='none';}
 function eliminarPedido(){
   if(!confirm('¿Eliminar este pedido? Esta acción no se puede deshacer.')) return;
+  const eqSesId = pedidos[editCI]?.eqSesId || null;
   pedidos.splice(editCI,1);
   save();
   cerrarModal();
   renderPedidos();
+  // Si el pedido estaba vinculado a Equipo App, se le avisa que el pedido ya no existe:
+  // sin esto, la sesión queda trabada para siempre en "Subidas" sin poder pasar a
+  // "Trabajos terminados", porque ese pase requiere que el video de backstage se haya
+  // disparado — algo que solo pasa cuando los productos del pedido se marcan listos, y
+  // ese pedido ya no está para marcarlo.
+  if (eqSesId) {
+    const lista = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : _eqSesiones;
+    const c = lista.find(s => s.id === eqSesId);
+    if (c && c.tieneProductos) {
+      c.tieneProductos = false;
+      _eqSesiones = lista;
+      if (typeof window.saveEquipoSesiones === 'function') {
+        window.saveEquipoSesiones(lista, eqSesId).catch(err => alert('ERROR actualizando Equipo App: ' + (err?.message || err)));
+      }
+      renderSesionesAngie();
+    }
+  }
 }
 
 const DB = [];
