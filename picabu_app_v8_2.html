@@ -16,7 +16,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Yeseva+One&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getFirestore, doc, setDoc, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
   import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
   const firebaseConfig = { apiKey: "AIzaSyBk0X0tN037Z2N68_Y4Bfa9e_P01horThI", authDomain: "picabu-app.firebaseapp.com", projectId: "picabu-app", storageBucket: "picabu-app.firebasestorage.app", messagingSenderId: "772235711232", appId: "1:772235711232:web:4b6d60bc1b01fad55599e5" };
   const fbApp = initializeApp(firebaseConfig);
@@ -111,8 +111,34 @@
     }
   });
   window._getEquipoSesiones = function() { return _equipoSesiones; };
+
+  // Guarda solo las sesiones que realmente cambiaron respecto a la última copia conocida,
+  // dentro de una transacción sobre la versión más fresca del servidor — así un cambio hecho
+  // acá (ej. vincular un pedido) y uno hecho por Renu en otra sesión, casi al mismo tiempo,
+  // no se pisan entre sí.
+  async function _guardarEquipoSesionesMerge(nuevaLista) {
+    const previa = _equipoSesiones;
+    const cambiadas = nuevaLista.filter(s => {
+      const antes = previa.find(p => p.id === s.id);
+      return !antes || JSON.stringify(antes) !== JSON.stringify(s);
+    });
+    const eliminadasIds = previa.filter(p => !nuevaLista.some(s => s.id === p.id)).map(p => p.id);
+    if (!cambiadas.length && !eliminadasIds.length) return;
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(EQUIPO_REF);
+      let serverLista = (snap.exists() && Array.isArray(snap.data().lista)) ? snap.data().lista : [];
+      cambiadas.forEach(s => {
+        const clean = JSON.parse(JSON.stringify(s, (k, v) => v === undefined ? null : v));
+        const idx = serverLista.findIndex(x => x.id === s.id);
+        if (idx === -1) serverLista.push(clean); else serverLista[idx] = clean;
+      });
+      if (eliminadasIds.length) serverLista = serverLista.filter(x => !eliminadasIds.includes(x.id));
+      tx.set(EQUIPO_REF, { lista: serverLista, updated: new Date().toISOString() });
+    });
+  }
+
   window.saveEquipoSesiones = async function(lista) {
-    try { await setDoc(EQUIPO_REF, { lista, updated: new Date().toISOString() }); }
+    try { await _guardarEquipoSesionesMerge(lista); }
     catch(e) { console.warn("Firebase saveEquipoSesiones:", e); throw e; }
   };
   window.marcarSinVideo = async function(bebe, mama) {
@@ -123,7 +149,7 @@
       }
       return s;
     });
-    try { await setDoc(EQUIPO_REF, { lista, updated: new Date().toISOString() }); }
+    try { await _guardarEquipoSesionesMerge(lista); }
     catch(e) { console.warn("Firebase marcarSinVideo:", e); }
   };
   window.deshacerSinVideo = async function(bebe, mama) {
@@ -134,7 +160,7 @@
       }
       return s;
     });
-    try { await setDoc(EQUIPO_REF, { lista, updated: new Date().toISOString() }); }
+    try { await _guardarEquipoSesionesMerge(lista); }
     catch(e) { console.warn("Firebase deshacerSinVideo:", e); }
   };
 
@@ -1939,6 +1965,7 @@ function clienteCardHtml(p, i, showPrecio, allowNameEdit, soloProveedor) {
       <div style="flex:1;min-width:0;">
         <div><span class="c-nombre">${p.bebe}</span><span class="c-mama">${p.mama}</span>${videoHecho ? `<span style="background:#ddeee5;color:#3a6a50;font-size:9px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:0.5px;margin-left:6px;">video listo</span>` : hayVideoPendiente && !videoSinGrabar ? `<span style="background:#f0e4df;color:var(--marron-d);font-size:9px;font-weight:500;padding:2px 8px;border-radius:10px;letter-spacing:0.5px;margin-left:6px;">video pendiente</span>` : ''}${(() => { if (!allowNameEdit) return ''; const dl = deadlinePedido(p); if (dl === '9999-12-31') return ''; const hoy = new Date().toISOString().split('T')[0]; const dias = Math.round((new Date(dl) - new Date(hoy)) / 86400000); const color = dias < 0 ? '#c94040' : dias < 7 ? '#c94040' : dias < 14 ? '#9a5000' : '#7a8a6a'; const [y,m,d] = dl.split('-'); return `<span style="font-size:9px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:0.5px;margin-left:6px;background:${color}18;color:${color};">⏰ ${d}/${m}</span>`; })()}</div>
         ${p.notas?`<div class="c-meta">📌 ${p.notas}</div>`:''}
+        <div id="eq-aviso-${i}" style="display:${p.eqSesId && p.pago==='Sin confirmar'?'':'none'};font-size:10px;font-weight:600;color:#9a6400;background:#fdf4e3;border-radius:8px;padding:3px 8px;margin-top:4px;">⚠ Vinculado a Equipo App — falta confirmar el pago para actualizarlo</div>
       </div>
       <div class="c-right">
         ${showPrecio?`<div class="c-total">${fmt(total)}</div>`:''}
@@ -2689,21 +2716,22 @@ function abrirEditar(ci) {
 }
 
 function cambiarPago(ci, val) {
-  const pagoAnterior = pedidos[ci].pago;
   pedidos[ci].pago = val; save(ci);
   const card = document.getElementById(`ccard-${ci}`);
   if (card) {
     const sel = card.querySelector('.pago-sel');
     if (sel) sel.className = 'pago-sel '+(val==='Pagado'?'pago-pagado':val==='Saldo pendiente'?'pago-saldo':val==='Sin confirmar'?'pago-sinconfirmar':'pago-vacio');
   }
-  // Auto-derivar a Renu cuando el pedido pasa de "Sin confirmar" a pago real
-  if ((val==='Saldo pendiente'||val==='Pagado') && pagoAnterior==='Sin confirmar' && pedidos[ci].eqSesId) {
+  // Derivar a Renu apenas el pago deja de estar "Sin confirmar" (pasarAEdicionEquipo es idempotente)
+  if ((val==='Saldo pendiente'||val==='Pagado') && pedidos[ci].eqSesId) {
     const p = pedidos[ci];
     const tieneVideo = _tieneVideoBackstage(p.prods||[]);
     const tienePackFotos = _tienePackFotos(p.prods||[]);
     const _fotosExtCant = (p.prods||[]).filter(x=>x.soloWA&&x.fotosDetalle).reduce((s,x)=>s+(x.fotosDetalle.cant||0),0);
     pasarAEdicionEquipo(p.eqSesId, p.eqCantFotos||_fotosExtCant||null, null, tieneVideo, tienePackFotos);
   }
+  const aviso = document.getElementById(`eq-aviso-${ci}`);
+  if (aviso) aviso.style.display = (pedidos[ci].eqSesId && val === 'Sin confirmar') ? '' : 'none';
 }
 
 // ── DRAG & DROP CLIENTES ──
@@ -3423,25 +3451,13 @@ function guardarPedido(){
     save(0); cerrarModal(); renderPedidos();
   }
   const effectiveEqSesId = eqSesId || existingEqSesId;
-  const isNewLink = eqSesId && eqSesId !== existingEqSesId;
   const tieneVideo = _tieneVideoBackstage(prods);
   const tienePackFotos = _tienePackFotos(prods);
-  console.log('[equipo] guardarPedido — effectiveEqSesId:', effectiveEqSesId, '| isNewLink:', isNewLink, '| pagoStatus:', pagoStatus);
-  if (pagoStatus !== 'Sin confirmar') {
-    if (isNewLink) {
-      const _fotosExtCant2 = prods.filter(x=>x.soloWA&&x.fotosDetalle).reduce((s,x)=>s+(x.fotosDetalle.cant||0),0);
-      pasarAEdicionEquipo(eqSesId, eqCantFotos||_fotosExtCant2||null, null, tieneVideo, tienePackFotos);
-    } else if (effectiveEqSesId && (tieneVideo || tienePackFotos)) {
-      const lista = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : _eqSesiones;
-      const c = lista.find(s => s.id === effectiveEqSesId);
-      if (c) {
-        if (!c.entregables) c.entregables = { video: false, packFotos: false, estado: 'edicion_renu' };
-        if (tieneVideo) c.entregables.video = true;
-        if (tienePackFotos) c.entregables.packFotos = true;
-        _eqSesiones = lista;
-        if (typeof window.saveEquipoSesiones === 'function') window.saveEquipoSesiones(lista);
-      }
-    }
+  // Se reintenta en cada guardado (no solo la primera vez que se vincula): pasarAEdicionEquipo
+  // es idempotente, así que si ya se había saltado por estar "Sin confirmar" se aplica ahora.
+  if (pagoStatus !== 'Sin confirmar' && effectiveEqSesId) {
+    const _fotosExtCant2 = prods.filter(x=>x.soloWA&&x.fotosDetalle).reduce((s,x)=>s+(x.fotosDetalle.cant||0),0);
+    pasarAEdicionEquipo(effectiveEqSesId, eqCantFotos||_fotosExtCant2||null, null, tieneVideo, tienePackFotos);
   }
 }
 
