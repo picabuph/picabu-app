@@ -2139,19 +2139,29 @@ function _actualizarVideoFotosCheck() {
   videoRow.style.display = cant > 40 ? '' : 'none';
 }
 
-function pasarAEdicionEquipo(sesId, cantFotos, notasExtra, tieneVideo, tienePackFotos) {
+function pasarAEdicionEquipo(sesId, fotosExtra, notasExtra, tieneVideo, tienePackFotos) {
   const lista = typeof window._getEquipoSesiones === 'function' ? window._getEquipoSesiones() : _eqSesiones;
   const idx = lista.findIndex(s => s.id === sesId);
-  if (idx < 0) { console.warn('[equipo] sesión no encontrada:', sesId); return; }
+  if (idx < 0) {
+    console.warn('[equipo] sesión no encontrada:', sesId);
+    alert('No se pudo actualizar Equipo App: la sesión vinculada ya no está disponible. Volvé a vincular el pedido desde el modal de edición.');
+    return;
+  }
   const c = lista[idx];
   let cambio = false;
   if (ESTADOS_PREVIOS_EQ.includes(c.estado)) {
     c.estado = 'edicion_renu';
     c.fechaConfirmacion = eq_hoy();
     c.fechaLimite = eq_calcLimite(eq_hoy(), 30);
-    if (cantFotos) c.cantFotos = cantFotos;
     cambio = true;
   }
+  // Cantidad de fotos = base del paquete + fotos extra confirmadas en el pedido. Se recalcula
+  // siempre (sin importar en qué estado ya esté la sesión) para no depender de que Renu no haya
+  // avanzado todavía. Si no hay extras, se deja sin definir: la card ya sabe mostrar la base del
+  // paquete sola en ese caso.
+  const fotosBase = eq_fotosDelPaquete(c.paquete) || 0;
+  const nuevoTotal = (fotosExtra > 0) ? (fotosBase + fotosExtra) : null;
+  if (nuevoTotal && c.cantFotos !== nuevoTotal) { c.cantFotos = nuevoTotal; cambio = true; }
   if (!c.tieneProductos) { c.tieneProductos = true; cambio = true; }
   if (tieneVideo || tienePackFotos) {
     if (!c.entregables) { c.entregables = { video: false, packFotos: false, estado: 'edicion_renu' }; cambio = true; }
@@ -2728,7 +2738,7 @@ function cambiarPago(ci, val) {
     const tieneVideo = _tieneVideoBackstage(p.prods||[]);
     const tienePackFotos = _tienePackFotos(p.prods||[]);
     const _fotosExtCant = (p.prods||[]).filter(x=>x.soloWA&&x.fotosDetalle).reduce((s,x)=>s+(x.fotosDetalle.cant||0),0);
-    pasarAEdicionEquipo(p.eqSesId, p.eqCantFotos||_fotosExtCant||null, null, tieneVideo, tienePackFotos);
+    pasarAEdicionEquipo(p.eqSesId, _fotosExtCant, null, tieneVideo, tienePackFotos);
   }
   const aviso = document.getElementById(`eq-aviso-${ci}`);
   if (aviso) aviso.style.display = (pedidos[ci].eqSesId && val === 'Sin confirmar') ? '' : 'none';
@@ -3457,7 +3467,7 @@ function guardarPedido(){
   // es idempotente, así que si ya se había saltado por estar "Sin confirmar" se aplica ahora.
   if (pagoStatus !== 'Sin confirmar' && effectiveEqSesId) {
     const _fotosExtCant2 = prods.filter(x=>x.soloWA&&x.fotosDetalle).reduce((s,x)=>s+(x.fotosDetalle.cant||0),0);
-    pasarAEdicionEquipo(effectiveEqSesId, eqCantFotos||_fotosExtCant2||null, null, tieneVideo, tienePackFotos);
+    pasarAEdicionEquipo(effectiveEqSesId, _fotosExtCant2, null, tieneVideo, tienePackFotos);
   }
 }
 
@@ -3951,8 +3961,8 @@ function renderCardEq(c, idx, compacto) {
       const dTxt=dEsp===0?'hoy':`hace ${dEsp} ${dEsp===1?'día':'días'}`;
       info+=`<div class="eq-info-item"><span class="eq-info-label">Galería enviada</span><span class="eq-info-val" style="color:${eC};font-weight:600;">${dTxt}</span></div>`;
     }
-  } else if (c.cantFotos) {
-    let fL=`${c.cantFotos} fotos`; if (fotosExtras>0) fL+=` (${fotosBase} + ${fotosExtras} extra)`;
+  } else if (c.cantFotos || fotosBase) {
+    let fL=`${c.cantFotos || fotosBase} fotos`; if (fotosExtras>0) fL+=` (${fotosBase} + ${fotosExtras} extra)`;
     info+=`<div class="eq-info-item"><span class="eq-info-label">Fotos a editar</span><span class="eq-info-val">${fL}</span></div>`;
   }
   let alerta60='';
