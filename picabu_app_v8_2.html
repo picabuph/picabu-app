@@ -112,55 +112,47 @@
   });
   window._getEquipoSesiones = function() { return _equipoSesiones; };
 
-  // Guarda solo las sesiones que realmente cambiaron respecto a la última copia conocida,
-  // dentro de una transacción sobre la versión más fresca del servidor — así un cambio hecho
-  // acá (ej. vincular un pedido) y uno hecho por Renu en otra sesión, casi al mismo tiempo,
-  // no se pisan entre sí.
-  async function _guardarEquipoSesionesMerge(nuevaLista) {
-    const previa = _equipoSesiones;
-    const cambiadas = nuevaLista.filter(s => {
-      const antes = previa.find(p => p.id === s.id);
-      return !antes || JSON.stringify(antes) !== JSON.stringify(s);
-    });
-    const eliminadasIds = previa.filter(p => !nuevaLista.some(s => s.id === p.id)).map(p => p.id);
-    if (!cambiadas.length && !eliminadasIds.length) return;
+  // Guarda SOLO la sesión indicada por changedId, dentro de una transacción sobre la versión
+  // más fresca del servidor — así un cambio hecho acá (ej. vincular un pedido) y uno hecho por
+  // Renu en otra sesión, casi al mismo tiempo, no se pisan entre sí.
+  // (No se puede diffear contra _equipoSesiones porque varios llamadores mutan esos objetos
+  // en el lugar antes de guardar — el "antes" y el "después" terminan siendo el mismo objeto.)
+  async function _guardarEquipoSesionesMerge(nuevaLista, changedId) {
+    const localItem = nuevaLista.find(s => s.id === changedId);
     await runTransaction(db, async (tx) => {
       const snap = await tx.get(EQUIPO_REF);
       let serverLista = (snap.exists() && Array.isArray(snap.data().lista)) ? snap.data().lista : [];
-      cambiadas.forEach(s => {
-        const clean = JSON.parse(JSON.stringify(s, (k, v) => v === undefined ? null : v));
-        const idx = serverLista.findIndex(x => x.id === s.id);
+      if (!localItem) {
+        serverLista = serverLista.filter(x => x.id !== changedId);
+      } else {
+        const clean = JSON.parse(JSON.stringify(localItem, (k, v) => v === undefined ? null : v));
+        const idx = serverLista.findIndex(x => x.id === changedId);
         if (idx === -1) serverLista.push(clean); else serverLista[idx] = clean;
-      });
-      if (eliminadasIds.length) serverLista = serverLista.filter(x => !eliminadasIds.includes(x.id));
+      }
       tx.set(EQUIPO_REF, { lista: serverLista, updated: new Date().toISOString() });
     });
   }
 
-  window.saveEquipoSesiones = async function(lista) {
-    try { await _guardarEquipoSesionesMerge(lista); }
+  window.saveEquipoSesiones = async function(lista, changedId) {
+    try { await _guardarEquipoSesionesMerge(lista, changedId); }
     catch(e) { console.warn("Firebase saveEquipoSesiones:", e); throw e; }
   };
   window.marcarSinVideo = async function(bebe, mama) {
-    const lista = _equipoSesiones.map(s => {
-      if (s.mama && s.mama.toLowerCase() === (mama||'').toLowerCase() &&
-          s.bebe && s.bebe.toLowerCase().includes((bebe||'').toLowerCase())) {
-        return { ...s, videoSinGrabar: true };
-      }
-      return s;
-    });
-    try { await _guardarEquipoSesionesMerge(lista); }
+    const match = _equipoSesiones.find(s =>
+      s.mama && s.mama.toLowerCase() === (mama||'').toLowerCase() &&
+      s.bebe && s.bebe.toLowerCase().includes((bebe||'').toLowerCase()));
+    if (!match) return;
+    const lista = _equipoSesiones.map(s => s.id === match.id ? { ...s, videoSinGrabar: true } : s);
+    try { await _guardarEquipoSesionesMerge(lista, match.id); }
     catch(e) { console.warn("Firebase marcarSinVideo:", e); }
   };
   window.deshacerSinVideo = async function(bebe, mama) {
-    const lista = _equipoSesiones.map(s => {
-      if (s.mama && s.mama.toLowerCase() === (mama||'').toLowerCase() &&
-          s.bebe && s.bebe.toLowerCase().includes((bebe||'').toLowerCase())) {
-        return { ...s, videoSinGrabar: false };
-      }
-      return s;
-    });
-    try { await _guardarEquipoSesionesMerge(lista); }
+    const match = _equipoSesiones.find(s =>
+      s.mama && s.mama.toLowerCase() === (mama||'').toLowerCase() &&
+      s.bebe && s.bebe.toLowerCase().includes((bebe||'').toLowerCase()));
+    if (!match) return;
+    const lista = _equipoSesiones.map(s => s.id === match.id ? { ...s, videoSinGrabar: false } : s);
+    try { await _guardarEquipoSesionesMerge(lista, match.id); }
     catch(e) { console.warn("Firebase deshacerSinVideo:", e); }
   };
 
@@ -2149,9 +2141,6 @@ function pasarAEdicionEquipo(sesId, fotosExtra, notasExtra, tieneVideo, tienePac
   }
   const c = lista[idx];
   let cambio = false;
-  if (window._DEBUG_EQ_LINK) {
-    alert(`DEBUG dentro de pasarAEdicionEquipo:\nsesión encontrada: ${c.bebe} · ${c.mama}\nestado actual: ${c.estado}\npaquete: ${c.paquete}\nfotosExtra recibido: ${fotosExtra}`);
-  }
   if (ESTADOS_PREVIOS_EQ.includes(c.estado)) {
     c.estado = 'edicion_renu';
     c.fechaConfirmacion = eq_hoy();
@@ -2176,9 +2165,11 @@ function pasarAEdicionEquipo(sesId, fotosExtra, notasExtra, tieneVideo, tienePac
     const lineasNuevas = notasExtra.split('\n').filter(l => l.trim() && !existingNotas.includes(l.trim()));
     if (lineasNuevas.length) { c.notas = existingNotas ? (existingNotas + '\n' + lineasNuevas.join('\n')) : lineasNuevas.join('\n'); cambio = true; }
   }
-  if (!cambio) return;
+  if (!cambio) { console.log('[equipo] pasarAEdicionEquipo: nada para actualizar en', c.bebe, c.mama, '— estado:', c.estado, 'cantFotos:', c.cantFotos, 'tieneProductos:', c.tieneProductos); return; }
   _eqSesiones = lista;
-  if (typeof window.saveEquipoSesiones === 'function') window.saveEquipoSesiones(lista);
+  if (typeof window.saveEquipoSesiones === 'function') {
+    window.saveEquipoSesiones(lista, sesId).catch(err => alert('ERROR guardando en Equipo App: ' + (err?.message || err)));
+  }
   renderSesionesAngie();
   renderPedidos();
 }
@@ -2298,7 +2289,7 @@ function confirmarFilmarVideo(eqSesId) {
   c.videoConfirmado = true;
   c.fechaVideoConfirmado = new Date().toISOString().split('T')[0];
   _eqSesiones = lista;
-  if (typeof window.saveEquipoSesiones === 'function') window.saveEquipoSesiones(lista);
+  if (typeof window.saveEquipoSesiones === 'function') window.saveEquipoSesiones(lista, eqSesId);
   renderDiseno();
 }
 
@@ -2309,7 +2300,7 @@ function noFilmarVideo(eqSesId) {
   c.videoSinGrabar = true;
   c.videoConfirmado = false;
   _eqSesiones = lista;
-  if (typeof window.saveEquipoSesiones === 'function') window.saveEquipoSesiones(lista);
+  if (typeof window.saveEquipoSesiones === 'function') window.saveEquipoSesiones(lista, eqSesId);
   renderDiseno();
 }
 
@@ -3432,9 +3423,6 @@ function guardarPedido(){
   const pagoStatus = document.getElementById('f-pago-status')?.value || '';
   const chk = document.getElementById('eq-pasar-check');
   const eqSesId = (chk && chk.checked && chk.dataset.sesid) ? chk.dataset.sesid : null;
-  if (window._DEBUG_EQ_LINK) {
-    alert(`DEBUG vínculo Equipo App:\nchk existe: ${!!chk}\nchk.checked: ${chk?chk.checked:'-'}\nchk.dataset.sesid: "${chk?chk.dataset.sesid:'-'}"\neqSesId calculado: ${eqSesId}\npagoStatus: "${pagoStatus}"`);
-  }
   const eqCantFotos = eqSesId ? (parseInt(document.getElementById('eq-cant-fotos')?.value || 0) || null) : null;
   const videoFotosCheck = document.getElementById('eq-video-fotos-check');
   const videoFotosRow = document.getElementById('eq-video-fotos-row');
@@ -3480,9 +3468,6 @@ function guardarPedido(){
   const effectiveEqSesId = eqSesId || existingEqSesId;
   const tieneVideo = _tieneVideoBackstage(prods);
   const tienePackFotos = _tienePackFotos(prods);
-  if (window._DEBUG_EQ_LINK) {
-    alert(`DEBUG antes de empujar a Equipo App:\nexistingEqSesId: ${existingEqSesId}\neffectiveEqSesId: ${effectiveEqSesId}\npagoStatus !== 'Sin confirmar': ${pagoStatus !== 'Sin confirmar'}\n¿va a llamar a pasarAEdicionEquipo?: ${pagoStatus !== 'Sin confirmar' && !!effectiveEqSesId}`);
-  }
   // Se reintenta en cada guardado (no solo la primera vez que se vincula): pasarAEdicionEquipo
   // es idempotente, así que si ya se había saltado por estar "Sin confirmar" se aplica ahora.
   if (pagoStatus !== 'Sin confirmar' && effectiveEqSesId) {
@@ -3813,8 +3798,8 @@ window.setEquipoSesionesLocal = function(lista) {
   if (typeof adel_renderNotifAngie === 'function') adel_renderNotifAngie();
 };
 
-function eq_save() {
-  if (typeof window.saveEquipoSesiones==='function') window.saveEquipoSesiones(_eqSesiones);
+function eq_save(changedId) {
+  if (typeof window.saveEquipoSesiones==='function') window.saveEquipoSesiones(_eqSesiones, changedId);
 }
 
 // ─ Modal editar sesión ─
@@ -3865,16 +3850,17 @@ function eq_guardarSesion() {
     tieneProductos: document.getElementById('eq-edit-prod').value === 'si',
   });
   eq_cerrarModalEditar();
-  eq_save();
+  eq_save(c.id);
   renderSesionesAngie();
 }
 function eq_eliminarSesion() {
   if (_eqEditIdx === null) return;
   const c = _eqSesiones[_eqEditIdx];
   if (!confirm(`¿Eliminar a ${c.bebe} de la lista?`)) return;
+  const idBorrado = c.id;
   _eqSesiones.splice(_eqEditIdx, 1);
   eq_cerrarModalEditar();
-  eq_save();
+  eq_save(idBorrado);
   renderSesionesAngie();
 }
 
@@ -3922,7 +3908,7 @@ function selEqEstado(idx, nuevoEstado) {
   c.estado=nuevoEstado;
   if (nuevoEstado==='subidas') c.fechaSubida=eq_hoy();
   if (nuevoEstado==='pendiente_cliente' && !c.fechaEnvioGaleria) c.fechaEnvioGaleria=eq_hoy();
-  eq_save(); renderSesionesAngie();
+  eq_save(c.id); renderSesionesAngie();
 }
 function eqAutoLimite() {
   const v=document.getElementById('eq-cf-fecha').value;
@@ -3939,17 +3925,18 @@ function confirmarFotosEq() {
   c.fechaLimite=document.getElementById('eq-cf-limite').value||eq_calcLimite(fecha,30);
   const cant=document.getElementById('eq-cf-cant').value;
   if (cant) c.cantFotos=parseInt(cant);
-  cerrarEqModalCF(); eq_save(); renderSesionesAngie();
+  cerrarEqModalCF(); eq_save(c.id); renderSesionesAngie();
 }
 
 // ─ Acciones sobre sesiones ─
-function eq_marcarEnvioGaleria(idx) { _eqSesiones[idx].estado='pendiente_cliente'; _eqSesiones[idx].fechaEnvioGaleria=eq_hoy(); eq_save(); renderSesionesAngie(); }
-function eq_marcarVideo(idx) { _eqSesiones[idx].tareaVideoHecho=true; eq_save(); renderSesionesAngie(); }
-function eq_deshacerVideo(idx) { _eqSesiones[idx].tareaVideoHecho=false; _eqSesiones[idx].tareaVideoDisparada=false; eq_save(); renderSesionesAngie(); }
-function eq_marcarVista(idx) { _eqSesiones[idx].vista=!_eqSesiones[idx].vista; eq_save(); renderSesionesAngie(); }
+function eq_marcarEnvioGaleria(idx) { _eqSesiones[idx].estado='pendiente_cliente'; _eqSesiones[idx].fechaEnvioGaleria=eq_hoy(); eq_save(_eqSesiones[idx].id); renderSesionesAngie(); }
+function eq_marcarVideo(idx) { _eqSesiones[idx].tareaVideoHecho=true; eq_save(_eqSesiones[idx].id); renderSesionesAngie(); }
+function eq_deshacerVideo(idx) { _eqSesiones[idx].tareaVideoHecho=false; _eqSesiones[idx].tareaVideoDisparada=false; eq_save(_eqSesiones[idx].id); renderSesionesAngie(); }
+function eq_marcarVista(idx) { _eqSesiones[idx].vista=!_eqSesiones[idx].vista; eq_save(_eqSesiones[idx].id); renderSesionesAngie(); }
 function eq_eliminarEntregada(idx) {
   if (!confirm(`¿Eliminar a ${_eqSesiones[idx]?.bebe} de la lista?`)) return;
-  _eqSesiones.splice(idx,1); eq_save(); renderSesionesAngie();
+  const idBorrado = _eqSesiones[idx]?.id;
+  _eqSesiones.splice(idx,1); eq_save(idBorrado); renderSesionesAngie();
 }
 
 // ─ Render de una card (idéntico a equipo app) ─
@@ -4100,7 +4087,7 @@ function eqEnt_cambiarEstado(sesId, nuevoEstado) {
   if (!c) return;
   if (!c.entregables) c.entregables = {};
   c.entregables.estado = nuevoEstado;
-  eq_save();
+  eq_save(sesId);
   renderSesionesAngie();
 }
 let _eqEntEditSesId = null;
@@ -4135,7 +4122,7 @@ function eqEnt_guardarEditar() {
   if (!c.entregables) c.entregables = {};
   c.entregables.fechaLimite = document.getElementById('eq-ent-fecha').value || null;
   c.entregables.notas = document.getElementById('eq-ent-notas').value.trim() || null;
-  eq_save();
+  eq_save(c.id);
   eqEnt_cerrarEditar();
   renderSesionesAngie();
 }
@@ -4537,7 +4524,7 @@ function guardarSesionAngie() {
     fechaLimite:document.getElementById('seq-fecha-limite')?.value||( fechaConf?eq_calcLimite(fechaConf,30):null ),
     cantFotos:document.getElementById('seq-cant')?.value?parseInt(document.getElementById('seq-cant').value):null,
   };
-  _eqSesiones.push(nueva); eq_save();
+  _eqSesiones.push(nueva); eq_save(nueva.id);
   const ok=document.getElementById('seq-ok');
   if (ok) { ok.style.display='inline'; setTimeout(()=>ok.style.display='none',2000); }
   ['seq-parser','seq-bebe','seq-mama','seq-fecha','seq-paquete','seq-notas','seq-fecha-conf','seq-fecha-limite','seq-cant'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
@@ -4584,7 +4571,7 @@ function _adelUpdateOnSesion(sesId, adelId, changes) {
   const aIdx = (_eqSesiones[idx].adelantos || []).findIndex(a => a.id === adelId);
   if (aIdx === -1) return;
   _eqSesiones[idx].adelantos[aIdx] = { ..._eqSesiones[idx].adelantos[aIdx], ...changes };
-  eq_save();
+  eq_save(sesId);
 }
 
 function _adelAddToSesion(sesId, adelanto) {
@@ -4592,7 +4579,7 @@ function _adelAddToSesion(sesId, adelanto) {
   if (idx === -1) return false;
   if (!_eqSesiones[idx].adelantos) _eqSesiones[idx].adelantos = [];
   _eqSesiones[idx].adelantos.push(adelanto);
-  eq_save();
+  eq_save(sesId);
   return true;
 }
 
@@ -4846,7 +4833,7 @@ function adel_eliminarDesdeModal() {
   const idx = _eqSesiones.findIndex(s => s.id === _adelEditSesId);
   if (idx !== -1) {
     _eqSesiones[idx].adelantos = (_eqSesiones[idx].adelantos || []).filter(a => a.id !== _adelEditAdelId);
-    eq_save();
+    eq_save(_adelEditSesId);
   }
   adel_cerrarModal();
   renderSesionesAngie();
