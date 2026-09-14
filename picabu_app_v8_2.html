@@ -2186,6 +2186,11 @@ function actualizarVideoReminder() {
   section.style.display = _hayVideoEnForm() ? '' : 'none';
 }
 
+// Recuerda la sesión que la usuaria eligió a mano en el desplegable de "Equipo app",
+// para no perderla si actualizarVinculoEq() se vuelve a ejecutar (ej. al seguir editando
+// el nombre del bebé/mamá después de haber elegido). Se resetea al abrir un pedido distinto.
+let _eqVinculoManualSesId = null;
+
 function actualizarVinculoEq() {
   const bebe = document.getElementById('f-bebe')?.value.trim() || '';
   const mama = document.getElementById('f-mama')?.value.trim() || '';
@@ -2206,26 +2211,30 @@ function actualizarVinculoEq() {
     </div>`;
   };
   if (match.tipo === 'auto') {
+    _eqVinculoManualSesId = match.match.id;
     section.style.display = '';
     content.innerHTML = _renderMatch(match.match);
     if (typeof adel_mostrarSeccionPicabu === 'function') adel_mostrarSeccionPicabu(match.match.id, bebe, mama);
   } else if (match.candidatos && match.candidatos.length) {
     section.style.display = '';
     const sorted = [...match.candidatos].sort((a,b) => (a.bebe||'').localeCompare(b.bebe||'', 'es'));
-    const opts = sorted.map(s => `<option value="${s.id}">${s.bebe} · ${s.mama}</option>`).join('');
+    // Si ya habías elegido una sesión a mano y sigue entre las candidatas, se mantiene elegida.
+    const seleccionPrevia = _eqVinculoManualSesId && sorted.some(s => s.id === _eqVinculoManualSesId) ? _eqVinculoManualSesId : '';
+    const opts = sorted.map(s => `<option value="${s.id}"${s.id===seleccionPrevia?' selected':''}>${s.bebe} · ${s.mama}</option>`).join('');
     content.innerHTML = `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <select id="eq-vinculo-sel" style="font-size:12px;padding:4px 8px;border-radius:8px;border:1px solid #c4b3e0;color:#3d2e6b;background:#fff;">
         <option value="">Sin vincular</option>${opts}
       </select>
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#3d2e6b;cursor:pointer;">
-        <input type="checkbox" id="eq-pasar-check" data-sesid="" style="accent-color:#6a4fa0;">
+        <input type="checkbox" id="eq-pasar-check" data-sesid="${seleccionPrevia}" ${seleccionPrevia?'checked':''} style="accent-color:#6a4fa0;">
         Vincular con equipo app al guardar
       </label>
     </div>`;
-    if (typeof adel_mostrarSeccionPicabu === 'function') adel_mostrarSeccionPicabu(null);
+    if (typeof adel_mostrarSeccionPicabu === 'function') adel_mostrarSeccionPicabu(seleccionPrevia || null, bebe, mama);
     document.getElementById('eq-vinculo-sel').addEventListener('change', function() {
       const chk = document.getElementById('eq-pasar-check');
       if (chk) { chk.dataset.sesid = this.value; chk.checked = !!this.value; }
+      _eqVinculoManualSesId = this.value || null;
       const sel = sesiones?.find(s => s.id === this.value);
       const lbl = document.querySelector('#eq-vinculo-section label[for] span, #eq-vinculo-section label span');
       if (sel && lbl) lbl.textContent = ESTADOS_PREVIOS_EQ.includes(sel.estado) ? 'Pasar a edición Renu al guardar' : 'Vincular con equipo app al guardar';
@@ -2643,6 +2652,7 @@ function guardarNombreProd(ci, pi, val) {
 // ── EDITAR PEDIDO ──
 function abrirEditar(ci) {
   editCI = ci;
+  _eqVinculoManualSesId = null;
   const p = pedidos[ci];
   document.getElementById('modal-titulo').textContent = 'Editar pedido';
   document.getElementById('f-bebe').value = p.bebe;
@@ -3111,6 +3121,7 @@ function guardarEstados(){
 // ── MODAL NUEVO PEDIDO ──
 function abrirModal() {
   editCI = null;
+  _eqVinculoManualSesId = null;
   document.getElementById('modal-titulo').textContent = 'Nuevo pedido';
   ['f-bebe','f-mama','f-pagos','f-notas','f-pago-status'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('prods-form').innerHTML='';
