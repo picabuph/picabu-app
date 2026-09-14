@@ -2149,6 +2149,9 @@ function pasarAEdicionEquipo(sesId, fotosExtra, notasExtra, tieneVideo, tienePac
   }
   const c = lista[idx];
   let cambio = false;
+  if (window._DEBUG_EQ_LINK) {
+    alert(`DEBUG dentro de pasarAEdicionEquipo:\nsesión encontrada: ${c.bebe} · ${c.mama}\nestado actual: ${c.estado}\npaquete: ${c.paquete}\nfotosExtra recibido: ${fotosExtra}`);
+  }
   if (ESTADOS_PREVIOS_EQ.includes(c.estado)) {
     c.estado = 'edicion_renu';
     c.fechaConfirmacion = eq_hoy();
@@ -3429,6 +3432,9 @@ function guardarPedido(){
   const pagoStatus = document.getElementById('f-pago-status')?.value || '';
   const chk = document.getElementById('eq-pasar-check');
   const eqSesId = (chk && chk.checked && chk.dataset.sesid) ? chk.dataset.sesid : null;
+  if (window._DEBUG_EQ_LINK) {
+    alert(`DEBUG vínculo Equipo App:\nchk existe: ${!!chk}\nchk.checked: ${chk?chk.checked:'-'}\nchk.dataset.sesid: "${chk?chk.dataset.sesid:'-'}"\neqSesId calculado: ${eqSesId}\npagoStatus: "${pagoStatus}"`);
+  }
   const eqCantFotos = eqSesId ? (parseInt(document.getElementById('eq-cant-fotos')?.value || 0) || null) : null;
   const videoFotosCheck = document.getElementById('eq-video-fotos-check');
   const videoFotosRow = document.getElementById('eq-video-fotos-row');
@@ -3474,6 +3480,9 @@ function guardarPedido(){
   const effectiveEqSesId = eqSesId || existingEqSesId;
   const tieneVideo = _tieneVideoBackstage(prods);
   const tienePackFotos = _tienePackFotos(prods);
+  if (window._DEBUG_EQ_LINK) {
+    alert(`DEBUG antes de empujar a Equipo App:\nexistingEqSesId: ${existingEqSesId}\neffectiveEqSesId: ${effectiveEqSesId}\npagoStatus !== 'Sin confirmar': ${pagoStatus !== 'Sin confirmar'}\n¿va a llamar a pasarAEdicionEquipo?: ${pagoStatus !== 'Sin confirmar' && !!effectiveEqSesId}`);
+  }
   // Se reintenta en cada guardado (no solo la primera vez que se vincula): pasarAEdicionEquipo
   // es idempotente, así que si ya se había saltado por estar "Sin confirmar" se aplica ahora.
   if (pagoStatus !== 'Sin confirmar' && effectiveEqSesId) {
